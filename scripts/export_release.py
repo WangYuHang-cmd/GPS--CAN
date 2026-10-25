@@ -55,6 +55,7 @@ def transform(rel, txt):
     if ext == ".sh":
         txt = txt.replace("/home/henry/Desktop/Drive/DriveDNA/experiments/logs", "${CANTRAJ_LOGS:-logs}")
         txt = txt.replace("cd /home/henry/Desktop/Drive/DriveDNA/GPS", 'cd "$(dirname "$0")/.."')
+        txt = txt.replace("--out /home/henry/Desktop/Drive/GPS--CAN", "--out ${RELEASE_DIR:-../GPS--CAN}")
     if rel == "scripts/m0_vehicle_params.py":
         txt = txt.replace('BENCH = "/data/backup/DriveDNA-GPS_bench"', 'BENCH = os.environ.get("CANTRAJ_BENCH", "/data/backup/DriveDNA-GPS_bench")')
         txt = txt.replace('DRIVES = "/home/henry/Desktop/Drive/DriveDNA/hf_staging/index/drives.parquet"',
@@ -113,6 +114,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(GPS_DIR)), "GPS--CAN"))
     ap.add_argument("--check-only", action="store_true")
+    ap.add_argument("--clean", action="store_true", help="remove everything in --out except .git before copying")
     args = ap.parse_args()
     files = sorted(set(iter_files()))
     bad = [(rel, h) for rel in files for h in gate(rel)]
@@ -124,6 +126,12 @@ def main():
     if args.check_only:
         return
     os.makedirs(args.out, exist_ok=True)
+    if args.clean:
+        for name in os.listdir(args.out):
+            if name == ".git":
+                continue
+            p = os.path.join(args.out, name)
+            shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
     n = 0
     for rel in files:
         dst = os.path.join(args.out, rel)

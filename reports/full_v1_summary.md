@@ -64,6 +64,28 @@ configured extract) and are excluded from the map rows only.
 - Learned attacker (gru seed 0) on degraded inputs: speed noise 0.5 m/s +877 m [623, 1,331] (dead reckoning is insensitive to the same noise), speed quantised to 1 m/s +15 m, steering at 1 Hz +6 m. Retraining the same model with 0.5 m/s speed-noise augmentation removes the brittleness: noisy inputs 236 m vs 1,225 m (paired -859 m [-1,322, -567], win rate 0.88) at a cost of +5 m [-0, 11] on clean inputs (240 vs 230 m).
 - Map coverage after per-episode tile planning: every evaluated main+val episode has map predictions (0 map_missing).
 
+## 4c. Warm start: the attacker may use the drive's own CAN / IMU history before t0 (research rows, 5-minute windows, heading known)
+Protocol variant outside the frozen main board: the method sees the drive's own events in [t0 - W, t0) (W = 5 min or all past; the GRU
+uses the last hour) to calibrate its state, never any GPS. Median ADE val / test / few_shot, cold start -> W = 5 min -> all past:
+- online-offset steering DR 855 / 869 / 1,423 -> 758 / 895 / 1,034 -> 699 / 952 / 937 m (means 1,301 / 1,385 / 1,961 -> 1,128 / 1,346 / 1,427).
+  Paired against its cold start the median change is about 0 on val and test (many first-window episodes have no history; the gains sit in
+  the tail: means -170 / -40 / -530 m) and -126 m [-563, +0] on few_shot. With all history it beats the nominal steering DR on few_shot
+  (-385 m [-922, -10], win 0.65; test -68 m [-388, +78]) and the train-fold calibrated DR on few_shot (-360 m [-865, -17]; test -196 m
+  [-2,161, +151]): a drive's own straight-road history calibrates the steering offset at least as well as the training fold does.
+- device gyro DR with the least-squares bias (G8 subset) 691 / 937 / 1,337 -> 494 / 818 / 1,129 -> 383 / 712 / 903 m. The estimator needs
+  speed variation, so history matters: all past vs cold start -91 m [-134, -36] on val (win 0.63), -34 m [-135, +0] on test, -46 m
+  [-112, -4] on few_shot. With all history the gyro overtakes the steering angle (vs nominal steering DR -84 / -64 / -196 m paired on
+  val / test / few_shot, the test CI spanning 0; vs the warmed online-offset DR -132 m [-187, -67] on val, -153 m [-343, +23] on test) but
+  stays far from the class-F curvature reference (+290 / +558 / +769 m).
+- learned GRU (seed 0, no retraining) 230 / 513 / 386 -> 232 / 459 / 363 -> 232 / 454 / 363 m: no change on val, a tail effect on test
+  (mean 1,631 -> 952 m, upper CI of the median 2,920 -> 943 m; paired median -12 m [-726, +0]) from a recurrent state that no longer
+  starts from zeros on unseen platforms.
+- Heading unknown: no effect (online no-map methods degenerate to holding the start). Not run: the steering map filter has no
+  calibration state, so its warm start equals its cold start.
+Reading: own history closes part of the calibration gap for the CAN-only methods (a few hundred metres at 5 minutes on the drivers and
+platforms where cold calibration is worst) but changes none of the main-board conclusions; the map, not calibration, remains the
+decisive ingredient. Tables: `reports/paper/tables/T8_warmstart_research.*`; headline rows `*_wu5__*` / `*_wuall__*`.
+
 ## 5. Caveats
 - Main-board inputs are CAN-only groups G1/G3 (G4 is a 600-drive supplement; G5 curvature is class F and reported as a reference, never as a CAN-only method).
 - Test-fold CIs are wide (41 to 42 drivers, heterogeneous unseen platforms); several learned-model medians have upper CI bounds above 2 km.

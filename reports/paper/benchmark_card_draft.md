@@ -143,6 +143,14 @@ and few_shot but only weakly on test (CIs span 0), and give no gain inside the m
 quantisation, 1 Hz steering) changes DR medians by 0 to 4 m; a 20 m start shift costs DR +2 m and the filter 0 m;
 30 degrees of heading noise costs DR +107 m and the filter +4 m.
 
+Warm start (research rows, 5 minutes, heading known; the method may calibrate on the drive's own CAN / IMU history
+before t0, never GPS): with all past history the online-offset steering DR goes from 855 / 869 / 1,423 m (val / test /
+few_shot) to 699 / 952 / 937 m and beats the training-fold calibrated DR on few_shot (paired -360 m [-865, -17]); the
+device-gyro DR (G8) goes from 691 / 937 / 1,337 m to 383 / 712 / 903 m and overtakes the steering angle (paired -84 /
+-64 / -196 m, the test CI spanning 0) while staying far from the class F reference (+290 to +769 m); the learned GRU
+changes only in the test tail (mean 1,631 to 952 m, median 513 to 454 m). Own history narrows the calibration gap of
+the CAN-only methods by a few hundred metres where cold calibration is worst and changes no main-board conclusion.
+
 Failure analysis (research tables): map-filter failures start right after turns (43% of 15-minute lost-road onsets
 within 30 s after a turn vs 23% expected for uniformly spread onsets; 67% vs 38% on whole drives) and lost episodes
 have more turns; the speed-only map filter depends strongly on road density (88 / 678 / 856 m across density

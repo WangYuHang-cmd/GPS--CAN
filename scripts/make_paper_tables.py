@@ -164,6 +164,36 @@ def t5_robustness(h, g):
     return pd.DataFrame(rows)
 
 
+def t8_warmstart(h, g):
+    """Warm-start research rows: the same method with the drive's own pre-t0 CAN / IMU history vs its cold start (paired),
+    plus the warmed online-offset DR against the nominal and the train-fold calibrated DR."""
+    rows = []
+    spec = [("warmstart_wu5_dr_steer_offonline", "steering DR, online offset", "5 min of own history vs cold start"),
+            ("warmstart_wuall_dr_steer_offonline", "steering DR, online offset", "all own history vs cold start"),
+            ("warmstart_wu5_dr_imu_yaw_rls", "device gyro DR, least-squares bias (G8)", "5 min of own history vs cold start"),
+            ("warmstart_wuall_dr_imu_yaw_rls", "device gyro DR, least-squares bias (G8)", "all own history vs cold start"),
+            ("warmstart_wu5_learned_gru_s0", "learned GRU (seed 0)", "5 min of own history vs cold start"),
+            ("warmstart_wuall_learned_gru_s0", "learned GRU (seed 0)", "last hour of own history vs cold start"),
+            ("warmstart_wu5_offonline_minus_nominal", "warmed online-offset DR vs nominal DR", "5 min of own history"),
+            ("warmstart_wuall_offonline_minus_nominal", "warmed online-offset DR vs nominal DR", "all own history"),
+            ("warmstart_wu5_offonline_minus_calib", "warmed online-offset DR vs train-fold calibrated DR", "5 min of own history"),
+            ("warmstart_wuall_offonline_minus_calib", "warmed online-offset DR vs train-fold calibrated DR", "all own history"),
+            ("warmstart_wuall_imu_rls_minus_G3_steer", "warmed device gyro DR (G8) vs nominal steering DR", "all own history"),
+            ("warmstart_wuall_imu_rls_minus_offonline_wuall", "warmed device gyro DR (G8) vs warmed online-offset DR", "all own history"),
+            ("warmstart_wuall_imu_rls_minus_G5_curvature", "warmed device gyro DR (G8) vs class F curvature DR", "all own history")]
+    for gain, method, pert in spec:
+        for proto in ("O-N-Hp", "O-N-Hm"):
+            for fold in ("val", "test", "few_shot_heldout"):
+                gg = g[(g.gain == gain) & (g.win == "w05") & (g.fold == fold) & (g.protocol == proto)]
+                if gg.empty:
+                    continue
+                r = gg.iloc[0]
+                rows.append(dict(method=method, comparison=pert, heading=PROTO[proto][1], fold=FOLD[fold], n_pairs=int(r.n_pairs),
+                                 paired_median_diff_m=f"{r.ade_diff_median:+,.0f} [{r.ade_diff_median_lo:+,.0f}, {r.ade_diff_median_hi:+,.0f}]",
+                                 paired_mean_diff_m=f"{r.ade_diff_mean:+,.0f}", win_rate=round(r.win_rate, 2)))
+    return pd.DataFrame(rows)
+
+
 def t6_topk(h):
     rows = []
     for proto in ("F-M-Hp", "F-M-Hm"):
@@ -194,7 +224,10 @@ def main():
     write(t4_supplements(h, g), "T4_supplementary_groups")
     write(t5_robustness(h, g), "T5_robustness_val")
     write(t6_topk(h), "T6_topk_oracle")
-    print("written to", OUT)
+    t8 = t8_warmstart(h, g)
+    if not t8.empty:
+        write(t8, "T8_warmstart_research")
+    print("written to", OUT, "(T7 comes from scripts/failure_analysis.py)")
 
 
 if __name__ == "__main__":

@@ -119,6 +119,12 @@ def learned_pairs(df):
         if a in ms:
             pairs += [((p_, p_), (f"warmstart{sfx}_offonline_minus_calib", a, "dr_steer_calib__G3")) for p_ in ("O-N-Hp", "O-N-Hm")]
             pairs += [((p_, p_), (f"warmstart{sfx}_offonline_minus_nominal", a, "dr_steer__G3")) for p_ in ("O-N-Hp", "O-N-Hm")]
+        g8 = f"dr_imu_yaw_rls{sfx}__G8"
+        if g8 in ms:                                   # warmed gyro vs the steering angle (cold nominal and warmed online offset) on the G8 drives
+            pairs += [((p_, p_), (f"warmstart{sfx}_imu_rls_minus_G3_steer", g8, "dr_steer__G3")) for p_ in ("O-N-Hp", "O-N-Hm")]
+            if a in ms:
+                pairs += [((p_, p_), (f"warmstart{sfx}_imu_rls_minus_offonline{sfx}", g8, a)) for p_ in ("O-N-Hp", "O-N-Hm")]
+            pairs += [(("O-N-Hp", "O-N-Hp"), (f"warmstart{sfx}_imu_rls_minus_G5_curvature", g8, "dr_curvature__G5"))]
     # supplementary signal groups vs the core steering DR on the common episodes
     if "dr_can_yaw__G4" in set(df.method):
         pairs += [((p_, p_), ("G4_canyaw_minus_G3_steer", "dr_can_yaw__G4", "dr_steer__G3")) for p_ in ("O-N-Hp", "O-N-Hm")]
