@@ -1,0 +1,230 @@
+benchmark_version: v1
+frozen_on: '2026-10-22'
+anchor:
+  min_speed_mps: 3.0
+  max_bearing_acc_deg: 5.0
+  ublox_max_h_acc_m: 10.0
+  require_fix_ok: true
+  can_speed_min_mps: 2.5
+windows:
+  w01:
+    duration_s: 60
+  w05:
+    duration_s: 300
+  w15:
+    duration_s: 900
+  full:
+    duration_s: null
+eligibility:
+  min_ref1hz_frac: 0.8
+  max_ref_gap_s: 30.0
+  min_path_len_m: 100.0
+reference:
+  view_1hz_tolerance_s: 0.5
+  hires_min_rate_hz: 8.0
+time_compensation:
+  android;ublox_hires: 0.3
+  qcomdiag_lowrate: 0.7
+  ublox_hires: 0.2
+  ublox_lowrate: 0.2
+metrics:
+  coverage_radii_m:
+  - 10
+  - 25
+  - 50
+  - 100
+  success_thresholds:
+  - r_m: 50
+    q: 0.9
+  - r_m: 100
+    q: 0.8
+  cluster_bootstrap:
+    primary: driver
+    secondary: drive
+    B: 1000
+    seed: 20260709
+    ci: 0.95
+  failure_flags:
+    fde_gt_500: final error > 500 m
+    lost_road: final fifth of the episode beyond 100 m
+protocols:
+  O-N-Hp:
+    mode: online
+    map: none
+    heading: given
+  O-N-Hm:
+    mode: online
+    map: none
+    heading: unknown
+  O-M-Hp:
+    mode: online
+    map: osm
+    heading: given
+  O-M-Hm:
+    mode: online
+    map: osm
+    heading: unknown
+  F-N-Hp:
+    mode: offline
+    map: none
+    heading: given
+  F-N-Hm:
+    mode: offline
+    map: none
+    heading: unknown
+  F-M-Hp:
+    mode: offline
+    map: osm
+    heading: given
+  F-M-Hm:
+    mode: offline
+    map: osm
+    heading: unknown
+map_radius_rule:
+  base_km: 5.0
+  speed_mps: 40.0
+  cap_km: 60
+input_layer_main: events
+grid_compat: control only
+main_board_admission:
+  include: GPS ok and re-decode ok
+  exclude:
+  - platform mock or missing (platform_unconfirmed)
+  - Controlled set (supplement)
+  - ineligible windows
+static_params:
+  source: per-drive carParams (platform medians in vehicle_params.csv)
+  calibrated_variants_only:
+  - angle_offset_train_deg
+  - steer_ratio_eff_train
+  - calibration_global.json fallback
+splits:
+  main: driver-disjoint fold from DriveDNA (train/val/test/few_shot_heldout)
+  auxiliary:
+  - seen_route
+  - cross_route_within_driver
+  - cross_metro
+  model_selection: val only
+  test_policy: frozen methods only; no repeated selection on test
+signal_groups:
+  G1:
+    name: speed_only
+    requires:
+    - speed
+    optional: []
+    static: []
+  G2:
+    name: speed_pedals
+    requires:
+    - speed
+    optional:
+    - gas
+    - brake
+    - gas_pressed
+    - brake_pressed
+    static: []
+    note: report only on drives where at least one pedal signal is valid
+  G3:
+    name: speed_steer
+    requires:
+    - speed
+    - steer_angle
+    optional:
+    - steer_rate
+    static:
+    - wheelbase_m
+    - steer_ratio
+  G4:
+    name: speed_can_yaw
+    requires:
+    - speed
+    - yaw_rate_can
+    optional: []
+    static:
+    - yawrate_unit
+    - yawrate_sign
+  G5:
+    name: speed_curvature_F
+    requires:
+    - speed
+    - curvature_loc
+    optional:
+    - yaw_rate_loc
+    static: []
+    flag: fusion_derived_not_can_only
+  G6:
+    name: speed_accel
+    requires:
+    - speed
+    - accel_long
+    optional: []
+    static: []
+    note: redundancy experiment
+  G7:
+    name: full_can
+    requires:
+    - speed
+    optional:
+    - steer_angle
+    - steer_rate
+    - accel_long
+    - speed_cluster
+    - gas
+    - brake
+    - gas_pressed
+    - brake_pressed
+    - steer_pressed
+    - blinker_left
+    - blinker_right
+    - cruise_on
+    - yaw_rate_can
+    - wheel_speed_fl
+    - wheel_speed_fr
+    - wheel_speed_rl
+    - wheel_speed_rr
+    static:
+    - wheelbase_m
+    - steer_ratio
+    - yawrate_unit
+    - yawrate_sign
+  G8:
+    name: full_can_imu
+    extends: G7
+    optional_extra:
+    - imu_gyro_x
+    - imu_gyro_y
+    - imu_gyro_z
+    - imu_acc_x
+    - imu_acc_y
+    - imu_acc_z
+    static_extra: []
+    status: pending_rlog_redecode
+    note: only drives with native (rlog) logs
+core_groups:
+- G1
+- G3
+tables:
+  vehicle_params.csv: dbbf4183ec9ff66a781faf9ae22cf0a300af953c6dbc005d66fdbca33fd76a27
+  drive_platform.csv: a1941d6209653e8d79f2144e1827c0f5ac40c91cee087ac33c128fc6b192c798
+  availability_wide.parquet: 0a4e9d1c978295044c06d6e8bbf3a1d5259649944cdfcc43460ef16be5d981fd
+  split_drives.parquet: 5de9c563124fe2b553d34b89c5647a89c024f1dae78224233d5ada9a48e76c45
+  time_alignment.json: b032b2fdba425693bd40e4b048b8f81d0e0a040e3b9ffbae10adbaaa0bec93cb
+  calibration_global.json: 3672fcc6d4a2271473a0714a6303f2eaff1e03f2cebec0f9efa8daad5a5ea8ab
+episode_manifest:
+  file: episode_manifest_v1.parquet
+  sha256: 7c4ddad3619eca73ff053ac98f9a8d4c1ecc3bed67f5007f505b486c9f5feb32
+  n_episodes: 110042
+  n_eligible: 98972
+  by_win:
+    full:
+      episodes: 3856
+      eligible: 3478
+    w01:
+      episodes: 82215
+      eligible: 75236
+    w05:
+      episodes: 17869
+      eligible: 15651
+    w15:
+      episodes: 6102
+      eligible: 4607

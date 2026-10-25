@@ -1,0 +1,123 @@
+# (admin, name) from Natural Earth states/provinces -> Geofabrik extract path; countries -> path (or list of sub-extracts)
+states:
+  United States of America:
+    Alabama: north-america/us/alabama
+    Alaska: north-america/us/alaska
+    Arizona: north-america/us/arizona
+    Arkansas: north-america/us/arkansas
+    California: north-america/us/california
+    Colorado: north-america/us/colorado
+    Connecticut: north-america/us/connecticut
+    Delaware: north-america/us/delaware
+    District of Columbia: north-america/us/district-of-columbia
+    Florida: north-america/us/florida
+    Georgia: north-america/us/georgia
+    Hawaii: north-america/us/hawaii
+    Idaho: north-america/us/idaho
+    Illinois: north-america/us/illinois
+    Indiana: north-america/us/indiana
+    Iowa: north-america/us/iowa
+    Kansas: north-america/us/kansas
+    Kentucky: north-america/us/kentucky
+    Louisiana: north-america/us/louisiana
+    Maine: north-america/us/maine
+    Maryland: north-america/us/maryland
+    Massachusetts: north-america/us/massachusetts
+    Michigan: north-america/us/michigan
+    Minnesota: north-america/us/minnesota
+    Mississippi: north-america/us/mississippi
+    Missouri: north-america/us/missouri
+    Montana: north-america/us/montana
+    Nebraska: north-america/us/nebraska
+    Nevada: north-america/us/nevada
+    New Hampshire: north-america/us/new-hampshire
+    New Jersey: north-america/us/new-jersey
+    New Mexico: north-america/us/new-mexico
+    New York: north-america/us/new-york
+    North Carolina: north-america/us/north-carolina
+    North Dakota: north-america/us/north-dakota
+    Ohio: north-america/us/ohio
+    Oklahoma: north-america/us/oklahoma
+    Oregon: north-america/us/oregon
+    Pennsylvania: north-america/us/pennsylvania
+    Rhode Island: north-america/us/rhode-island
+    South Carolina: north-america/us/south-carolina
+    South Dakota: north-america/us/south-dakota
+    Tennessee: north-america/us/tennessee
+    Texas: north-america/us/texas
+    Utah: north-america/us/utah
+    Vermont: north-america/us/vermont
+    Virginia: north-america/us/virginia
+    Washington: north-america/us/washington
+    West Virginia: north-america/us/west-virginia
+    Wisconsin: north-america/us/wisconsin
+    Wyoming: north-america/us/wyoming
+  Canada:
+    Alberta: north-america/canada/alberta
+    British Columbia: north-america/canada/british-columbia
+    Manitoba: north-america/canada/manitoba
+    New Brunswick: north-america/canada/new-brunswick
+    Newfoundland and Labrador: north-america/canada/newfoundland-and-labrador
+    Nova Scotia: north-america/canada/nova-scotia
+    Ontario: north-america/canada/ontario
+    Prince Edward Island: north-america/canada/prince-edward-island
+    Quebec: north-america/canada/quebec
+    Québec: north-america/canada/quebec
+    Saskatchewan: north-america/canada/saskatchewan
+    Yukon: north-america/canada/yukon
+    Northwest Territories: north-america/canada/northwest-territories
+    Nunavut: north-america/canada/nunavut
+countries:
+  Australia: australia-oceania/australia
+  Malaysia: asia/malaysia-singapore-brunei
+  Singapore: asia/malaysia-singapore-brunei
+  Netherlands: europe/netherlands
+  Taiwan: asia/taiwan
+  Germany: [europe/germany/sachsen, europe/germany/bayern, europe/germany/baden-wuerttemberg, europe/germany/niedersachsen, europe/germany/hessen, europe/germany/schleswig-holstein, europe/germany/hamburg, europe/germany/nordrhein-westfalen, europe/germany/berlin, europe/germany/brandenburg]
+  Brazil: south-america/brazil
+  South Korea: asia/south-korea
+  Korea: asia/south-korea
+  Republic of Korea: asia/south-korea
+  United Arab Emirates: asia/gcc-states
+  Saudi Arabia: asia/gcc-states
+  Jordan: asia/jordan
+  Thailand: asia/thailand
+  Sweden: europe/sweden
+  Slovakia: europe/slovakia
+  Belgium: europe/belgium
+  France: europe/france
+  Italy: europe/italy
+  Russia: russia
+  United Kingdom: europe/great-britain
+  Norway: europe/norway
+  Vietnam: asia/vietnam
+  Czechia: europe/czech-republic
+  Czech Republic: europe/czech-republic
+  Switzerland: europe/switzerland
+  China: asia/china
+  Austria: europe/austria
+  Estonia: europe/estonia
+  New Zealand: australia-oceania/new-zealand
+  Poland: europe/poland
+  Spain: europe/spain
+  Denmark: europe/denmark
+  Argentina: south-america/argentina
+  India: asia/india
+  Kazakhstan: asia/kazakhstan
+  Kyrgyzstan: asia/kyrgyzstan
+  Israel: asia/israel-and-palestine
+  Bulgaria: europe/bulgaria
+  Lithuania: europe/lithuania
+  Mexico: north-america/mexico
+  Japan: asia/japan
+  Portugal: europe/portugal
+  Ireland: europe/ireland-and-northern-ireland
+  Hungary: europe/hungary
+  Romania: europe/romania
+  Finland: europe/finland
+  Turkey: europe/turkey
+  Chile: south-america/chile
+  Colombia: south-america/colombia
+  Philippines: asia/philippines
+  Indonesia: asia/indonesia
+  South Africa: africa/south-africa

@@ -1,0 +1,28 @@
+DriveDNA Research License (code): CAN-to-GPS benchmark (cantraj)
+
+Copyright (c) 2026 Yuhang Wang, Lingyao Li, Hao Zhou
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to use, copy, modify and
+redistribute the Software for non-commercial academic and research purposes only,
+subject to the following conditions:
+
+1. Research use only. Any commercial use of the Software, or of models, embeddings or
+   results derived from it, requires prior written permission from the authors.
+
+2. No re-identification or individual scoring. The Software, and any model, embedding
+   or result derived from DriveDNA data, must not be used to identify or re-identify
+   individual drivers, nor for insurance, employment, credit or law-enforcement scoring
+   of individuals.
+
+3. Data terms. The DriveDNA data are released separately on Hugging Face under the
+   DriveDNA research license and data-use agreement. This license grants no rights to
+   the data; access to the data is governed by those terms.
+
+4. Attribution. Redistributions of the Software, and publications that use it, must
+   retain this notice and cite the DriveDNA paper (arXiv:2607.23822).
+
+5. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE
+   FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.

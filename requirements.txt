@@ -1,0 +1,15 @@
+# Benchmark code (package cantraj + scripts). Versions are the ones the v1 tables were produced with; newer patch
+# releases are expected to work. torch is only needed to train the learned baselines (inference is plain numpy).
+numpy>=2.0,<3
+pandas>=2.2,<3
+pyarrow>=17
+pyyaml>=6
+scipy>=1.14
+shapely>=2.0
+pyproj>=3.6
+matplotlib>=3.8
+tabulate>=0.9
+pytest>=8
+# optional
+# torch>=2.4            # training only (scripts/train_motion.py, scripts/build_learn_cache.py)
+# huggingface_hub>=0.24 # downloading the gated data

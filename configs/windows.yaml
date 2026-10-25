@@ -1,0 +1,20 @@
+# Episode window classes. The nominal start tiles the drive; the actual episode starts at the first qualifying
+# anchor t0 at or after the nominal start and spans [t0, t0 + duration_s]. "full" = one episode per drive.
+version: 0.3
+classes:
+  w01: {duration_s: 60}
+  w05: {duration_s: 300}
+  w15: {duration_s: 900}
+  full: {duration_s: null}
+anchor:
+  min_speed_mps: 3.0          # GPS speed at t0
+  max_bearing_acc_deg: 5.0    # 0 < bearing_acc <= this
+  ublox_max_h_acc_m: 10.0     # extra requirement for u-blox fixes
+  require_fix_ok: true
+eligibility:
+  min_ref1hz_frac: 0.8        # n_ref1hz >= frac * duration
+  max_ref_gap_s: 30.0         # longer reference gaps -> has_gap30, excluded from the main board
+  min_path_len_m: 100.0       # shorter -> stationary stratum only
+reference:
+  view_1hz_tolerance_s: 0.5   # nearest real fix within +-0.5 s of each integer second; never interpolated
+  hires_min_rate_hz: 8.0      # view_10hz only for drives at >= 8 Hz

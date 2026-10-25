@@ -1,0 +1,12 @@
+# Signal groups. A group is available on a drive iff every signal in `requires` has availability status "valid".
+version: 0.3
+groups:
+  G1: {name: speed_only,        requires: [speed],                        optional: [],                static: []}
+  G2: {name: speed_pedals,      requires: [speed],                        optional: [gas, brake, gas_pressed, brake_pressed], static: [], note: "report only on drives where at least one pedal signal is valid"}
+  G3: {name: speed_steer,       requires: [speed, steer_angle],           optional: [steer_rate],      static: [wheelbase_m, steer_ratio]}
+  G4: {name: speed_can_yaw,     requires: [speed, yaw_rate_can],          optional: [],                static: [yawrate_unit, yawrate_sign]}
+  G5: {name: speed_curvature_F, requires: [speed, curvature_loc],         optional: [yaw_rate_loc],    static: [], flag: fusion_derived_not_can_only}
+  G6: {name: speed_accel,       requires: [speed, accel_long],            optional: [],                static: [], note: redundancy experiment}
+  G7: {name: full_can,          requires: [speed],                        optional: [steer_angle, steer_rate, accel_long, speed_cluster, gas, brake, gas_pressed, brake_pressed, steer_pressed, blinker_left, blinker_right, cruise_on, yaw_rate_can, wheel_speed_fl, wheel_speed_fr, wheel_speed_rl, wheel_speed_rr], static: [wheelbase_m, steer_ratio, yawrate_unit, yawrate_sign]}
+  G8: {name: full_can_imu,      extends: G7,                              optional_extra: [imu_gyro_x, imu_gyro_y, imu_gyro_z, imu_acc_x, imu_acc_y, imu_acc_z], static_extra: [], status: available, note: "only drives with native (rlog) logs and IMU >= 50 Hz (1,928 drives); gyro yaw axis = v0, left-positive; bias estimated causally"}
+core: [G1, G3]

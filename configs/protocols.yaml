@@ -1,0 +1,27 @@
+# Eight core protocols: {online, offline} x {no map, osm} x {heading known H+, heading unknown H-}.
+# Common: start position p0 known; signal group fixed; static params per group; no reference data after t0.
+version: 0.3
+input_layer_default: events        # events = raw message stream at logged times; grid_compat = released 10 Hz table
+reference_view: view_1hz
+map_radius_rule: {base_km: 5.0, speed_mps: 40.0}   # r(tau) = base + speed * tau, tau = time since t0
+success_thresholds: [{r_m: 50, q: 0.9}, {r_m: 100, q: 0.8}]
+coverage_radii_m: [10, 25, 50, 100]
+protocols:
+  O-N-Hp: {mode: online,  map: none, heading: given}
+  O-N-Hm: {mode: online,  map: none, heading: unknown}
+  O-M-Hp: {mode: online,  map: osm,  heading: given}
+  O-M-Hm: {mode: online,  map: osm,  heading: unknown}
+  F-N-Hp: {mode: offline, map: none, heading: given}
+  F-N-Hm: {mode: offline, map: none, heading: unknown}
+  F-M-Hp: {mode: offline, map: osm,  heading: given}
+  F-M-Hm: {mode: offline, map: osm,  heading: unknown}
+online_rules:
+  - an event is visible to the model only after its logged time
+  - no sequence length, end point or future gap mask is provided
+  - predictions are queried at the real reference timestamps after t0
+offline_rules:
+  - all whitelisted events inside [t0, t_end] are visible
+  - nothing outside the episode is visible
+topk:
+  online: 1
+  offline_max: 10   # whole-path candidates only

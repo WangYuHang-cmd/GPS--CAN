@@ -1,0 +1,71 @@
+# Signal registry. class: C0 = bus-direct, C1 = derived from CAN only, I0 = device IMU raw, F = fusion-derived
+# (localizer / paramsd; GPS-informed in older openpilot), forbidden = never an attack input.
+# sign conventions verified against GPS course over ground (10 Hz u-blox drives), see Plan.md 1.1.
+version: 0.3
+frame: {enu: "x east, y north, theta CCW from east", gps_bearing: "compass, clockwise from north", theta_from_bearing: "theta = pi/2 - bearing"}
+signals:
+  speed:          {src: carState.vEgo,             class: C0, unit: m/s,   sign: forward_pos, rate_hz: {rlog: 100, qlog: 10}}
+  speed_cluster:  {src: carState.vEgoCluster,      class: C0, unit: m/s,   sign: forward_pos, rate_hz: {rlog: 100, qlog: 10}}
+  accel_long:     {src: carState.aEgo,             class: C1, unit: m/s2,  sign: forward_pos, rate_hz: {rlog: 100, qlog: 10}, note: "Kalman derivative of speed inside openpilot"}
+  steer_angle:    {src: carState.steeringAngleDeg, class: C0, unit: deg,   sign: left_pos,    rate_hz: {rlog: 100, qlog: 10}, needs: [wheelbase_m, steer_ratio]}
+  steer_rate:     {src: carState.steeringRateDeg,  class: C0, unit: deg/s, sign: left_pos,    rate_hz: {rlog: 100, qlog: 10}}
+  gas:            {src: carState.gas,              class: C0, unit: ratio, rate_hz: {rlog: 100, qlog: 10}}
+  brake:          {src: carState.brake,            class: C0, unit: ratio, rate_hz: {rlog: 100, qlog: 10}}
+  gas_pressed:    {src: carState.gasPressed,       class: C0, unit: bool}
+  brake_pressed:  {src: carState.brakePressed,     class: C0, unit: bool}
+  steer_pressed:  {src: carState.steeringPressed,  class: C0, unit: bool}
+  blinker_left:   {src: carState.leftBlinker,      class: C0, unit: bool}
+  blinker_right:  {src: carState.rightBlinker,     class: C0, unit: bool}
+  cruise_on:      {src: carState.cruiseState.enabled, class: C0, unit: bool}
+  yaw_rate_can:   {src: carState.yawRate,          class: C0, unit: per_brand, sign: per_brand, needs: [yawrate_unit, yawrate_sign], note: "Ford/VW rad/s left-positive; Hyundai/Kia/Genesis/Honda deg/s; Chevrolet ~10x deg/s; VW ID.4/Volvo opposite sign (to be frozen on the training fold)"}
+  wheel_speed_fl: {src: carState.wheelSpeeds.fl,   class: C0, unit: m/s, status: pending_rlog_redecode}
+  wheel_speed_fr: {src: carState.wheelSpeeds.fr,   class: C0, unit: m/s, status: pending_rlog_redecode}
+  wheel_speed_rl: {src: carState.wheelSpeeds.rl,   class: C0, unit: m/s, status: pending_rlog_redecode}
+  wheel_speed_rr: {src: carState.wheelSpeeds.rr,   class: C0, unit: m/s, status: pending_rlog_redecode}
+  # IMU axes are stored in the LOGGED sensor frame (v0, v1, v2). Verified on the 2026-10-22 trial drives against GPS
+  # course rate: the yaw axis is v0 with positive = LEFT turn for lsm6ds3, lsm6ds3trc and bmx055 (corr 0.84 to 0.88 on
+  # 10 Hz u-blox drives); this matches openpilot's device-frame mapping (device z-down = -v0). Frozen in M0 on train fold.
+  imu_gyro_x:     {src: "gyroscope | sensorEvents", class: I0, unit: rad/s, status: available, note: "raw sensor frame v0; yaw axis, left-positive (trial verified); calibrated 'gyro' rows, gyroUncalibrated as fallback"}
+  imu_gyro_y:     {src: "gyroscope | sensorEvents", class: I0, unit: rad/s, status: available}
+  imu_gyro_z:     {src: "gyroscope | sensorEvents", class: I0, unit: rad/s, status: available}
+  imu_acc_x:      {src: "accelerometer | sensorEvents", class: I0, unit: m/s2, status: available}
+  imu_acc_y:      {src: "accelerometer | sensorEvents", class: I0, unit: m/s2, status: available}
+  imu_acc_z:      {src: "accelerometer | sensorEvents", class: I0, unit: m/s2, status: available}
+  yaw_rate_loc:   {src: "livePose.angularVelocityDevice.z | liveLocationKalman.angularVelocityCalibrated.z", class: F, unit: rad/s, sign: right_pos, rate_hz: {rlog: 20, qlog: 4}, flag: gps_informed_localizer_in_old_logs}
+  curvature_loc:  {src: controlsState.curvature,   class: F, unit: 1/m,   sign: right_pos,   rate_hz: {rlog: 100, qlog: 10}, flag: paramsd_online_params}
+forbidden_always:
+  - latitude
+  - longitude
+  - altitude_m
+  - speed_mps
+  - bearing_deg
+  - bearing_acc_deg
+  - h_acc_m
+  - v_acc_m
+  - unix_ms
+  - utc
+  - msg_unix_ms
+  - leadOne_status
+  - leadOne_dRel
+  - leadOne_vLead
+  - leadOne_vRel
+  - laneLeft_y
+  - laneRight_y
+meta_only: [is_human, cs_enabled]
+static_params:
+  wheelbase_m:   {src: carParams.wheelbase,     public: true}
+  steer_ratio:   {src: carParams.steerRatio,    public: true}
+  center_to_front_m: {src: carParams.centerToFront, public: true}
+  mass_kg:       {src: carParams.mass,          public: true}
+  # draft brand table from source code + trial drives (to be frozen on the training fold by m0_sign_units.py):
+  #   ford: raw Yaw_Data_FD1.VehYaw_W_Actl, rad/s, left-positive (trial slope +0.76 vs GPS course rate)
+  #   hyundai (CAN-FD excluded): ESP12.YAW_RATE raw, deg/s, left-positive (trial slope +45)
+  #   volkswagen MQB/PQ: converted to rad/s with sign bit, left-positive in the 2024 code; some fork platforms differ
+  yawrate_unit:  {src: brand table (training fold), values: [rad_s, deg_s, deg_s_x10, none]}
+  yawrate_sign:  {src: brand table (training fold), values: [1, -1]}
+  angle_offset_train_deg: {src: training-fold fit, default: 0.0}
+integration:
+  steer: "omega_L = v * tan(deg2rad(steer_angle - angle_offset) / steer_ratio) / wheelbase_m"
+  can_yaw: "omega_L = yawrate_sign * unit_factor * yaw_rate_can"
+  loc_yaw: "omega_L = -yaw_rate_loc"
+  curvature: "omega_L = -v * curvature_loc"

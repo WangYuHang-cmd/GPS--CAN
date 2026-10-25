@@ -1,0 +1,142 @@
+"""Export the benchmark code to a clean release tree and run the identifier gate.
+
+  python scripts/export_release.py --out /path/to/GPS--CAN [--check-only]
+
+Copies: src/cantraj, scripts, configs, specs, tests, pytest.ini, README.md, LICENSE, requirements.txt, ENVIRONMENT.md,
+reports/full_v1_summary.md, reports/failure_analysis_v1.md, reports/paper/ (card, methods, tables, figures and the
+figure data). Never copies: manifests/ (published through the gated data repository), _private, predictions, models,
+logs, progress.md, caches, __pycache__. Gate: every text file is scanned for raw device / route identifiers, local
+absolute paths and the Controlled-supplement city; any hit aborts the export.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import sys
+
+GPS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", "README.md", "LICENSE", "requirements.txt",
+           "ENVIRONMENT.md", "reports/full_v1_summary.md", "reports/failure_analysis_v1.md", "reports/paper"]
+EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
+# machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
+EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
+                 "tile_pilot_maps.py", "make_pilot_report.py", "run_pilot.sh"}
+TEXT_EXT = {".py", ".md", ".txt", ".yaml", ".yml", ".csv", ".ini", ".cfg", ".toml", ".json", ".sh"}
+DATA_EXT = {".csv", ".json", ".md", ".txt"}
+OPENPILOT = "$OPENPILOT_DIR"
+GATE = [
+    ("dongle id (16 hex)", re.compile(r"(?<![0-9a-zA-Z.])(?=[0-9]*[a-f])[0-9a-f]{16}(?![0-9a-zA-Z])")),   # hex with a letter: not a float
+    ("route timestamp", re.compile(r"\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}")),
+    ("local path", re.compile(r"/home/[a-z]+/|/data/datasets/raw|hf_staging_video|_local/videos")),
+    ("controlled city", re.compile(r"\bTampa\b")),
+    ("coordinate column", re.compile(r"\blat0\b|\blon0\b|\blatitude\b.*,.*\blongitude\b")),   # data and documents only
+]
+GATE_ALLOW = {  # files where a pattern is expected and harmless (sha256 prefixes in the spec look like hex ids)
+    "specs/benchmark_v1.md": {"dongle id (16 hex)"},
+    "configs/benchmark_v1.yaml": {"dongle id (16 hex)"},
+    "tests/test_splits.py": {"controlled city", "local path"},  # the test that asserts their absence
+    "reports/paper/benchmark_card_draft.md": {"coordinate column"},  # names the forbidden signals (latitude, longitude)
+    "reports/paper/methods_draft.md": {"coordinate column"},
+    "tests/test_manifest_v1.py": {"dongle id (16 hex)"},
+    "scripts/export_release.py": {"dongle id (16 hex)", "route timestamp", "local path", "controlled city", "coordinate column"},
+}
+
+
+def transform(rel, txt):
+    """Release-time edits of text files: the authors' interpreter becomes an environment variable, the Controlled
+    supplement's city is not named, hard-coded cache roots go through cantraj.paths."""
+    ext = os.path.splitext(rel)[1].lower()
+    txt = txt.replace(f"PYTHONPATH={OPENPILOT} ", "").replace(f"PYTHONPATH={OPENPILOT}:", "PYTHONPATH=")
+    txt = txt.replace(f"{OPENPILOT}/.venv/bin/python", "${PYTHON:-python3}" if ext == ".sh" else "python")
+    txt = txt.replace(OPENPILOT, "$OPENPILOT_DIR")
+    txt = re.sub(r"\bTampa\b", "the Controlled-supplement city", txt)
+    if ext == ".sh":
+        txt = txt.replace("/home/henry/Desktop/Drive/DriveDNA/experiments/logs", "${CANTRAJ_LOGS:-logs}")
+        txt = txt.replace("cd /home/henry/Desktop/Drive/DriveDNA/GPS", 'cd "$(dirname "$0")/.."')
+    if rel == "scripts/m0_vehicle_params.py":
+        txt = txt.replace('BENCH = "/data/backup/DriveDNA-GPS_bench"', 'BENCH = os.environ.get("CANTRAJ_BENCH", "/data/backup/DriveDNA-GPS_bench")')
+        txt = txt.replace('DRIVES = "/home/henry/Desktop/Drive/DriveDNA/hf_staging/index/drives.parquet"',
+                          'DRIVES = os.path.join(os.environ.get("CANTRAJ_DRIVEDNA", "."), "index", "drives.parquet")')
+    if rel == "scripts/m0_redecode_rlog.py":
+        txt = txt.replace('sys.path.insert(0, "/home/henry/Desktop/Drive/DriveDNA/code/preprocessing")',
+                          'sys.path.insert(0, os.environ.get("DRIVEDNA_CODE", "code/preprocessing"))   # DriveDNA preprocessing helpers')
+    # manifests referenced by absolute path -> the CANTRAJ_MANIFESTS directory; Natural Earth polygons -> environment variables
+    txt = re.sub(r'os.path.join(os.environ.get("CANTRAJ_MANIFESTS", "manifests"), "([^")]+)"',
+                 lambda m: f'os.path.join(os.environ.get("CANTRAJ_MANIFESTS", "manifests"), "{m.group(1)}")', txt)
+    txt = re.sub(r'"/home/henry/Desktop/Drive/LKA_Detection/lkas_analysis_output/([a-z_]+)\.geojson"',
+                 lambda m: f'os.environ.get("CANTRAJ_{m.group(1).upper()}_GEOJSON", "{m.group(1)}.geojson")   # Natural Earth polygons', txt)
+    return txt
+
+
+def iter_files():
+    for rel in INCLUDE:
+        src = os.path.join(GPS_DIR, rel)
+        if os.path.isfile(src):
+            yield rel
+            continue
+        for root, dirs, files in os.walk(src):
+            dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+            for f in files:
+                if f in EXCLUDE_FILES or f.endswith((".pyc", ".pyo")):
+                    continue
+                yield os.path.relpath(os.path.join(root, f), GPS_DIR)
+
+
+def read_text(rel):
+    return transform(rel, open(os.path.join(GPS_DIR, rel), encoding="utf-8", errors="replace").read())
+
+
+def gate(rel):
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in TEXT_EXT:
+        return []
+    try:
+        txt = read_text(rel)
+    except OSError:
+        return []
+    hits = []
+    for name, rx in GATE:
+        if name in GATE_ALLOW.get(rel, set()):
+            continue
+        if name == "coordinate column" and ext not in DATA_EXT:
+            continue
+        m = rx.search(txt)
+        if m:
+            line = txt.count("\n", 0, m.start()) + 1
+            hits.append((name, line, m.group(0)[:60]))
+    return hits
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.dirname(GPS_DIR)), "GPS--CAN"))
+    ap.add_argument("--check-only", action="store_true")
+    args = ap.parse_args()
+    files = sorted(set(iter_files()))
+    bad = [(rel, h) for rel in files for h in gate(rel)]
+    for rel, (name, line, frag) in bad:
+        print(f"GATE HIT  {rel}:{line}  {name}: {frag!r}")
+    print(f"identifier gate: {len(bad)} hits in {len(files)} files")
+    if bad:
+        sys.exit(1)
+    if args.check_only:
+        return
+    os.makedirs(args.out, exist_ok=True)
+    n = 0
+    for rel in files:
+        dst = os.path.join(args.out, rel)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.splitext(rel)[1].lower() in TEXT_EXT:
+            with open(dst, "w", encoding="utf-8") as f:
+                f.write(read_text(rel))
+            shutil.copymode(os.path.join(GPS_DIR, rel), dst)
+        else:
+            shutil.copy2(os.path.join(GPS_DIR, rel), dst)
+        n += 1
+    print(f"exported {n} files -> {args.out}")
+
+
+if __name__ == "__main__":
+    main()

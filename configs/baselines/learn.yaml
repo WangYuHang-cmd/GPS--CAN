@@ -1,0 +1,32 @@
+# Learned motion baselines (appendix A of Plan v0.5)
+version: v1
+grid_dt: 0.1
+max_age_s: 0.3
+chunks:
+  lengths_s: [60, 120, 300]
+  curriculum: {epochs_60_only: 5, epochs_up_to_120: 12, final_probs: [0.2, 0.3, 0.5]}
+  starts_per_90s: 1
+  min_valid_frac: 0.5
+train:
+  batch_size: 256
+  epochs: 30
+  steps_per_epoch: 150
+  lr: 3.0e-3
+  lr_min: 1.0e-5
+  lr_physics: 3.0e-4
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+  platform_dropout: 0.15
+  brand_dropout: 0.05
+  seeds: [0, 1, 2]
+  val_chunks: 2000
+  val_replay_every: 5
+  val_replay_drives: 150
+loss: {w_pos: 1.0, w_dtheta: 0.5, w_ds: 0.1, w_resid: 1.0e-3}
+models:
+  gru: {hidden: 64, emb_plat: 8, emb_brand: 4}
+  resid: {hidden: 32, use_gru: true}
+  resid_nogru: {hidden: 32, use_gru: false}
+paths:                      # relative to CANTRAJ_BENCH (cantraj.paths.BENCH); absolute paths are used as given
+  cache: learn/v1
+  models: models/learn
