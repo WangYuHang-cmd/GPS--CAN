@@ -117,7 +117,9 @@ def t1_main(h):
                 sr = seed_rows(h, kind, proto, "w05", fold)
                 if sr:
                     mu, sd, n, ne, c100, s50 = sr
-                    row[f"{FOLD[fold]} median ADE [CI]"] = f"{mu:,.0f} ± {sd:,.0f} (seeds)"; row[f"{FOLD[fold]} c100"] = round(c100, 2); row[f"{FOLD[fold]} S(50,0.9)"] = round(s50, 2)
+                    rs = _rec_seeds(h, kind, proto, "w05", fold) or {}
+                    row[f"{FOLD[fold]} median ADE [CI]"] = f"{mu:,.0f} ± {sd:,.0f} (seeds)"; row[f"{FOLD[fold]} c100"] = round(c100, 2)
+                    row[f"{FOLD[fold]} path@50"] = rs.get("path recovered @50 m", np.nan); row[f"{FOLD[fold]} S(50,0.9)"] = round(s50, 2)
             out.append(row)
     for proto in ("O-M-Hp", "O-M-Hm", "F-M-Hp", "F-M-Hm"):
         setting, heading = PROTO[proto]
