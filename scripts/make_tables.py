@@ -48,9 +48,16 @@ def headline(df, n_boot):
             md, mlo, mhi = ci(v, g.driver.values, np.median, max(100, n_boot // 5))
             row.update({f"{metric}_median_lo_driver": mlo, f"{metric}_median_hi_driver": mhi})
             row[f"{metric}_p90"] = float(np.nanpercentile(v, 90))
-        for c in ("c10", "c25", "c50", "c100"):
+        for c in ("c10", "c25", "c50", "c100", "c200", "c500", "dist_c50", "dist_c100", "path_recall25", "path_recall50", "path_recall100",
+                  "path_prec25", "path_prec50", "path_prec100", "frac_ok50", "frac_ok100"):
             if c in g:
-                row[c] = float(g[c].mean())
+                row[c] = float(np.nanmean(g[c].astype(float).values))
+        for c in ("t_ok50", "t_ok100"):
+            if c in g:
+                row[f"{c}_median"] = float(np.nanmedian(g[c].astype(float).values))
+        for f_ in ("route_ok", "end_within_100", "end_within_500"):
+            if f_ in g:
+                row[f"{f_}_rate"] = float(g[f_].astype(float).mean())
         for s_ in ("s50_90", "s100_80"):
             if s_ in g:
                 row[s_] = float(g[s_].astype(float).mean())

@@ -46,6 +46,47 @@ def write(df, name, floatfmt=None):
     print(f"{name}: {len(df)} rows")
 
 
+REC_COLS = [("c50", "within 50 m (time-aligned)"), ("c100", "within 100 m (time-aligned)"), ("dist_c100", "distance within 100 m"),
+            ("path_recall50", "path recovered @50 m"), ("path_recall100", "path recovered @100 m"), ("path_prec50", "path precision @50 m"),
+            ("route_ok_rate", "route recovered (>= 80% @50 m)"), ("frac_ok100", "time before first 100 m miss"),
+            ("end_within_100_rate", "destination within 100 m"), ("end_within_500_rate", "destination within 500 m")]
+
+
+def _rec(r):
+    return {name: (round(float(r[c]), 2) if c in r and pd.notna(r[c]) else np.nan) for c, name in REC_COLS}
+
+
+def _rec_seeds(h, kind, proto, win, fold):
+    rows = h[(h.protocol == proto) & (h.win == win) & (h.fold == fold) & h.method.str.match(rf"^learned_{kind}_s\d+__G3$")]
+    if rows.empty:
+        return None
+    return {name: (round(float(rows[c].mean()), 2) if c in rows else np.nan) for c, name in REC_COLS}
+
+
+def t1b_recovery(h):
+    """Recovery metrics of the main-board methods (w05, start known): what share of the trajectory is recovered."""
+    out = []
+    plan = [("O-N-Hp", ["dr_curvature__G5", "dr_none__G1", "dr_steer__G3", "dr_steer_offonline__G3", "dr_steer_calib__G3", "p0_hold__G1"]),
+            ("O-N-Hm", ["dr_none__G1", "dr_steer__G3", "p0_hold__G1"]),
+            ("O-M-Hp", ["map_pf_steer__G3", "map_pf_steer_calib__G3", "map_pf_none__G1"]), ("O-M-Hm", ["map_pf_steer__G3", "map_pf_none__G1"]),
+            ("F-M-Hp", ["map_beam_steer__G3", "map_beam_steer_calib__G3", "map_beam_none__G1"]), ("F-M-Hm", ["map_beam_steer__G3", "map_beam_none__G1"])]
+    for proto, meths in plan:
+        setting, heading = PROTO[proto]
+        for fold in ("test", "few_shot_heldout"):
+            for m in meths:
+                r = h[(h.protocol == proto) & (h.method == m) & (h.win == "w05") & (h.fold == fold)]
+                if r.empty:
+                    continue
+                r = r.iloc[0]
+                out.append(dict(setting=setting, heading=heading, fold=FOLD[fold], method=NAMES[m], n=int(r.n_episodes), **_rec(r)))
+            if proto in ("O-N-Hp", "O-N-Hm"):
+                for kind in ("gru", "resid"):
+                    rs = _rec_seeds(h, kind, proto, "w05", fold)
+                    if rs:
+                        out.append(dict(setting=setting, heading=heading, fold=FOLD[fold], method=NAMES[f"learned_{kind}"] + ", 3 seeds", n=np.nan, **rs))
+    return pd.DataFrame(out)
+
+
 def seed_rows(h, kind, proto, win, fold):
     """Median ADE over seeds for learned_<kind>_s{0,1,2}; returns (mean of medians, sd, n seeds, n episodes)."""
     rows = h[(h.protocol == proto) & (h.win == win) & (h.fold == fold) & h.method.str.match(rf"^learned_{kind}_s\d__G3$")]
@@ -66,7 +107,7 @@ def t1_main(h):
                 r = h[(h.protocol == proto) & (h.method == m) & (h.win == "w05") & (h.fold == fold)]
                 if len(r):
                     r = r.iloc[0]
-                    row[f"{FOLD[fold]} median ADE [CI]"] = fmt_ci(r); row[f"{FOLD[fold]} c100"] = round(r.c100, 2); row[f"{FOLD[fold]} S(50,0.9)"] = round(r.s50_90, 2)
+                    row[f"{FOLD[fold]} median ADE [CI]"] = fmt_ci(r); row[f"{FOLD[fold]} c100"] = round(r.c100, 2); row[f"{FOLD[fold]} path@50"] = round(float(r.path_recall50), 2) if "path_recall50" in r and pd.notna(r.path_recall50) else np.nan; row[f"{FOLD[fold]} S(50,0.9)"] = round(r.s50_90, 2)
             out.append(row)
         for kind in ("gru", "resid", "resid_nogru"):
             row = dict(setting=setting, heading=heading, method=NAMES[f"learned_{kind}"] + ", 3 seeds")
@@ -85,7 +126,7 @@ def t1_main(h):
                 r = h[(h.protocol == proto) & (h.method == m) & (h.win == "w05") & (h.fold == fold)]
                 if len(r):
                     r = r.iloc[0]
-                    row[f"{FOLD[fold]} median ADE [CI]"] = fmt_ci(r); row[f"{FOLD[fold]} c100"] = round(r.c100, 2); row[f"{FOLD[fold]} S(50,0.9)"] = round(r.s50_90, 2)
+                    row[f"{FOLD[fold]} median ADE [CI]"] = fmt_ci(r); row[f"{FOLD[fold]} c100"] = round(r.c100, 2); row[f"{FOLD[fold]} path@50"] = round(float(r.path_recall50), 2) if "path_recall50" in r and pd.notna(r.path_recall50) else np.nan; row[f"{FOLD[fold]} S(50,0.9)"] = round(r.s50_90, 2)
                     if proto.startswith("F") and "topk_ade_median" in r and pd.notna(r.topk_ade_median):
                         row[f"{FOLD[fold]} Top-10 oracle ADE"] = f"{r.topk_ade_median:,.0f}"
             out.append(row)
@@ -219,6 +260,9 @@ def main():
     t1 = t1_main(h); write(t1, "T1_main_board_w05")
     with open(os.path.join(OUT, "T1_main_board_w05.md"), "a") as f:
         f.write(f"\n{t1.attrs.get('note', '')}\n")
+    t1b = t1b_recovery(h)
+    if not t1b.empty and "path recovered @50 m" in t1b and t1b["path recovered @50 m"].notna().any():
+        write(t1b, "T1b_recovery_w05")
     write(t2_horizons(h), "T2_horizons")
     write(t3_learned(h, g), "T3_learned_2x2")
     write(t4_supplements(h, g), "T4_supplementary_groups")

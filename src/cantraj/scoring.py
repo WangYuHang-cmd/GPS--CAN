@@ -26,7 +26,8 @@ def score_episode(ep: Episode, pred: pd.DataFrame, dd=None, in_gap=None, topk=Fa
     xy[hit] = top1.loc[key[hit], ["pred_x_m", "pred_y_m"]].to_numpy(dtype=float)
     err = M.point_errors(xy, ref[["x", "y"]].to_numpy(dtype=float))
     s_can = s_can_at(dd, ep, t) if dd is not None else None
-    out = M.episode_summary(err, t_rel=t - ep.t0, s_can=s_can, moving=ref["moving"].to_numpy(dtype=bool), in_gap=in_gap)
+    ref_xy = ref[["x", "y"]].to_numpy(dtype=float)
+    out = M.episode_summary(err, t_rel=t - ep.t0, s_can=s_can, moving=ref["moving"].to_numpy(dtype=bool), in_gap=in_gap, pred_xy=xy, ref_xy=ref_xy)
     if topk and pred["candidate_id"].max() > 0:
         errs = []
         for k, g in pred.groupby("candidate_id"):
@@ -37,7 +38,7 @@ def score_episode(ep: Episode, pred: pd.DataFrame, dd=None, in_gap=None, topk=Fa
             errs.append(e)
         kbest, ebest = M.topk_oracle(np.array(errs))
         best = M.episode_summary(ebest)
-        out.update({f"topk_{k}": v for k, v in best.items() if k in ("ade", "fde", "c25", "c50", "c100")})
+        out.update({f"topk_{k}": v for k, v in best.items() if k in ("ade", "fde", "c25", "c50", "c100", "end_within_100")})
         out["topk_K"] = len(errs)
         out["topk_pick"] = int(kbest)
     out.update(episode_id=ep.episode_id, driver=ep.driver, drive=ep.drive, parent=f"{ep.driver}/{ep.drive}",

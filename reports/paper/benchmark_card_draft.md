@@ -83,10 +83,17 @@ intervals are driver-cluster bootstraps (95%), gains are paired differences on c
 
 ## 6. Metrics
 
-ADE (mean position error over the episode's reference seconds), FDE, P90, coverage c_r for r in {10, 25, 50, 100} m
-(share of reference seconds within r; a missing prediction counts as a miss), success S(50 m, 0.9) primary and
-S(100 m, 0.8) secondary, and two failure flags: fde_gt_500 (end error > 500 m) and lost_road (the final fifth of the
-episode stays beyond 100 m). Offline map rows add the Top-K oracle (best of K whole-path candidates).
+Error: ADE (mean position error over the episode's reference seconds), FDE, P90. Time-aligned recovery: coverage c_r
+for r in {10, 25, 50, 100, 200, 500} m (share of reference seconds within r; a missing prediction counts as a miss)
+and its distance-weighted form dist_c_r (share of the distance travelled while within r). Time-free recovery of the
+route: path_recall_r = share of the reference path length lying within r = 25 / 50 / 100 m of the predicted path,
+path_prec_r = share of the predicted path length within r of the reference path (both on polylines resampled at
+5 m), and route_ok = path_recall_50 >= 0.8 ("the route was recovered"). Duration: t_ok_r = seconds until the error
+first exceeds 50 / 100 m and frac_ok_r = its share of the episode. Destination: end_within_100 / end_within_500 (error
+at the final reference second). Success S(50 m, 0.9) primary and S(100 m, 0.8) secondary; failure flags fde_gt_500
+(end error > 500 m) and lost_road (the final fifth of the episode stays beyond 100 m). Offline map rows add the Top-K
+oracle (best of K whole-path candidates). Time-aligned and time-free recovery differ when a method is on the right
+road at the wrong time (a late or early prediction along the true route scores low on c_r and high on path_recall).
 
 ## 7. Main-board admission and exclusions
 

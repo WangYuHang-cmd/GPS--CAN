@@ -1,35 +1,35 @@
-setting,heading,method,test median ADE [CI],test c100,"test S(50,0.9)",few-shot median ADE [CI],few-shot c100,"few-shot S(50,0.9)",test Top-10 oracle ADE,few-shot Top-10 oracle ADE
-no map,known,"curvature DR, class F reference (G5)","84 [74, 98]",0.64,0.13,"80 [70, 92]",0.67,0.14,,
-no map,known,"speed only, straight line (G1)","735 [651, 884]",0.3,0.04,"825 [787, 951]",0.28,0.04,,
-no map,known,"steering DR, nominal (G3)","921 [538, 1,737]",0.25,0.02,"1,669 [878, 2,451]",0.2,0.01,,
-no map,known,"steering DR, online offset (G3)","869 [656, 1,351]",0.25,0.02,"1,423 [981, 1,948]",0.2,0.01,,
-no map,known,"steering DR, train-fold calibrated (G3)","1,312 [459, 4,179]",0.24,0.02,"1,651 [918, 2,386]",0.2,0.01,,
-no map,known,start prior (G1),"1,068 [914, 1,118]",0.12,0.0,"1,062 [950, 1,163]",0.13,0.0,,
-no map,known,route retrieval (G1),"3,083 [1,931, 4,295]",0.08,0.01,"2,530 [1,936, 3,326]",0.08,0.01,,
-no map,known,hold start (G1),"3,314 [2,022, 4,313]",0.03,0.0,"2,709 [2,145, 3,558]",0.03,0.0,,
-no map,known,"learned causal GRU (G3), 3 seeds",543 ± 37 (seeds),0.32,0.04,393 ± 35 (seeds),0.33,0.03,,
-no map,known,"learned physics residual + GRU (G3), 3 seeds",690 ± 130 (seeds),0.29,0.04,435 ± 36 (seeds),0.32,0.02,,
-no map,known,"learned physics residual, no GRU (G3), 3 seeds","1,203 ± 68 (seeds)",0.21,0.01,"1,426 ± 43 (seeds)",0.2,0.01,,
-no map,unknown,"curvature DR, class F reference (G5)",,,,,,,,
-no map,unknown,"speed only, straight line (G1)","3,403 [2,432, 4,597]",0.08,0.01,"3,273 [2,842, 3,886]",0.05,0.0,,
-no map,unknown,"steering DR, nominal (G3)","3,076 [2,251, 4,101]",0.06,0.0,"2,929 [2,530, 3,755]",0.05,0.0,,
-no map,unknown,"steering DR, online offset (G3)","3,000 [2,152, 4,096]",0.06,0.0,"2,825 [2,360, 3,667]",0.05,0.0,,
-no map,unknown,"steering DR, train-fold calibrated (G3)","3,261 [2,270, 4,045]",0.06,0.0,"2,953 [2,519, 3,739]",0.05,0.0,,
-no map,unknown,start prior (G1),"3,314 [2,022, 4,313]",0.03,0.0,"2,709 [2,145, 3,558]",0.03,0.0,,
-no map,unknown,route retrieval (G1),"3,083 [1,931, 4,295]",0.08,0.01,"2,530 [1,936, 3,326]",0.08,0.01,,
-no map,unknown,hold start (G1),"3,314 [2,022, 4,313]",0.03,0.0,"2,709 [2,145, 3,558]",0.03,0.0,,
-no map,unknown,"learned causal GRU (G3), 3 seeds","3,120 ± 99 (seeds)",0.08,0.01,"2,894 ± 24 (seeds)",0.06,0.0,,
-no map,unknown,"learned physics residual + GRU (G3), 3 seeds","3,209 ± 185 (seeds)",0.07,0.0,"2,900 ± 12 (seeds)",0.05,0.0,,
-no map,unknown,"learned physics residual, no GRU (G3), 3 seeds","3,482 ± 104 (seeds)",0.06,0.0,"2,907 ± 25 (seeds)",0.05,0.0,,
-"map, online",known,"map particle filter, nominal steering (G3)","44 [29, 61]",0.81,0.37,"27 [19, 49]",0.85,0.54,,
-"map, online",known,"map particle filter, calibrated steering (G3)","46 [29, 64]",0.79,0.35,"29 [20, 52]",0.84,0.52,,
-"map, online",known,"map particle filter, speed only (G1)","319 [50, 898]",0.54,0.18,"743 [498, 913]",0.49,0.12,,
-"map, online",unknown,"map particle filter, nominal steering (G3)","148 [107, 182]",0.68,0.22,"94 [62, 151]",0.73,0.36,,
-"map, online",unknown,"map particle filter, calibrated steering (G3)","200 [138, 281]",0.65,0.19,"101 [69, 176]",0.72,0.35,,
-"map, online",unknown,"map particle filter, speed only (G1)","1,826 [1,550, 2,045]",0.34,0.06,"1,942 [1,561, 2,221]",0.3,0.04,,
-"map, offline",known,"offline beam search, nominal steering (G3)","37 [24, 55]",0.82,0.41,"22 [17, 41]",0.86,0.59,27,17
-"map, offline",known,"offline beam search, calibrated steering (G3)","39 [25, 56]",0.8,0.39,"24 [17, 43]",0.85,0.56,29,18
-"map, offline",known,"offline beam search, speed only (G1)","186 [38, 719]",0.56,0.22,"519 [247, 734]",0.51,0.19,66,66
-"map, offline",unknown,"offline beam search, nominal steering (G3)","43 [26, 60]",0.75,0.37,"24 [18, 43]",0.81,0.56,28,18
-"map, offline",unknown,"offline beam search, calibrated steering (G3)","48 [31, 63]",0.72,0.34,"27 [18, 46]",0.79,0.53,29,18
-"map, offline",unknown,"offline beam search, speed only (G1)","1,389 [1,014, 1,624]",0.34,0.12,"1,645 [1,364, 1,846]",0.31,0.1,77,86
+setting,heading,method,test median ADE [CI],test c100,test path@50,"test S(50,0.9)",few-shot median ADE [CI],few-shot c100,few-shot path@50,"few-shot S(50,0.9)",test Top-10 oracle ADE,few-shot Top-10 oracle ADE
+no map,known,"curvature DR, class F reference (G5)","84 [74, 98]",0.64,,0.13,"80 [70, 92]",0.67,,0.14,,
+no map,known,"speed only, straight line (G1)","735 [651, 884]",0.3,,0.04,"825 [787, 951]",0.28,,0.04,,
+no map,known,"steering DR, nominal (G3)","921 [538, 1,737]",0.25,,0.02,"1,669 [878, 2,451]",0.2,,0.01,,
+no map,known,"steering DR, online offset (G3)","869 [656, 1,351]",0.25,,0.02,"1,423 [981, 1,948]",0.2,,0.01,,
+no map,known,"steering DR, train-fold calibrated (G3)","1,312 [459, 4,179]",0.24,,0.02,"1,651 [918, 2,386]",0.2,,0.01,,
+no map,known,start prior (G1),"1,068 [914, 1,118]",0.12,,0.0,"1,062 [950, 1,163]",0.13,,0.0,,
+no map,known,route retrieval (G1),"3,083 [1,931, 4,295]",0.08,,0.01,"2,530 [1,936, 3,326]",0.08,,0.01,,
+no map,known,hold start (G1),"3,314 [2,022, 4,313]",0.03,,0.0,"2,709 [2,145, 3,558]",0.03,,0.0,,
+no map,known,"learned causal GRU (G3), 3 seeds",543 ± 37 (seeds),0.32,,0.04,393 ± 35 (seeds),0.33,,0.03,,
+no map,known,"learned physics residual + GRU (G3), 3 seeds",690 ± 130 (seeds),0.29,,0.04,435 ± 36 (seeds),0.32,,0.02,,
+no map,known,"learned physics residual, no GRU (G3), 3 seeds","1,203 ± 68 (seeds)",0.21,,0.01,"1,426 ± 43 (seeds)",0.2,,0.01,,
+no map,unknown,"curvature DR, class F reference (G5)",,,,,,,,,,
+no map,unknown,"speed only, straight line (G1)","3,403 [2,432, 4,597]",0.08,,0.01,"3,273 [2,842, 3,886]",0.05,,0.0,,
+no map,unknown,"steering DR, nominal (G3)","3,076 [2,251, 4,101]",0.06,,0.0,"2,929 [2,530, 3,755]",0.05,,0.0,,
+no map,unknown,"steering DR, online offset (G3)","3,000 [2,152, 4,096]",0.06,,0.0,"2,825 [2,360, 3,667]",0.05,,0.0,,
+no map,unknown,"steering DR, train-fold calibrated (G3)","3,261 [2,270, 4,045]",0.06,,0.0,"2,953 [2,519, 3,739]",0.05,,0.0,,
+no map,unknown,start prior (G1),"3,314 [2,022, 4,313]",0.03,,0.0,"2,709 [2,145, 3,558]",0.03,,0.0,,
+no map,unknown,route retrieval (G1),"3,083 [1,931, 4,295]",0.08,,0.01,"2,530 [1,936, 3,326]",0.08,,0.01,,
+no map,unknown,hold start (G1),"3,314 [2,022, 4,313]",0.03,,0.0,"2,709 [2,145, 3,558]",0.03,,0.0,,
+no map,unknown,"learned causal GRU (G3), 3 seeds","3,120 ± 99 (seeds)",0.08,,0.01,"2,894 ± 24 (seeds)",0.06,,0.0,,
+no map,unknown,"learned physics residual + GRU (G3), 3 seeds","3,209 ± 185 (seeds)",0.07,,0.0,"2,900 ± 12 (seeds)",0.05,,0.0,,
+no map,unknown,"learned physics residual, no GRU (G3), 3 seeds","3,482 ± 104 (seeds)",0.06,,0.0,"2,907 ± 25 (seeds)",0.05,,0.0,,
+"map, online",known,"map particle filter, nominal steering (G3)","44 [29, 61]",0.81,,0.37,"27 [19, 49]",0.85,,0.54,,
+"map, online",known,"map particle filter, calibrated steering (G3)","46 [29, 64]",0.79,,0.35,"29 [20, 52]",0.84,,0.52,,
+"map, online",known,"map particle filter, speed only (G1)","319 [50, 898]",0.54,,0.18,"743 [498, 913]",0.49,,0.12,,
+"map, online",unknown,"map particle filter, nominal steering (G3)","148 [107, 182]",0.68,,0.22,"94 [62, 151]",0.73,,0.36,,
+"map, online",unknown,"map particle filter, calibrated steering (G3)","200 [138, 281]",0.65,,0.19,"101 [69, 176]",0.72,,0.35,,
+"map, online",unknown,"map particle filter, speed only (G1)","1,826 [1,550, 2,045]",0.34,,0.06,"1,942 [1,561, 2,221]",0.3,,0.04,,
+"map, offline",known,"offline beam search, nominal steering (G3)","37 [24, 55]",0.82,,0.41,"22 [17, 41]",0.86,,0.59,27,17
+"map, offline",known,"offline beam search, calibrated steering (G3)","39 [25, 56]",0.8,,0.39,"24 [17, 43]",0.85,,0.56,29,18
+"map, offline",known,"offline beam search, speed only (G1)","186 [38, 719]",0.56,,0.22,"519 [247, 734]",0.51,,0.19,66,66
+"map, offline",unknown,"offline beam search, nominal steering (G3)","43 [26, 60]",0.75,,0.37,"24 [18, 43]",0.81,,0.56,28,18
+"map, offline",unknown,"offline beam search, calibrated steering (G3)","48 [31, 63]",0.72,,0.34,"27 [18, 46]",0.79,,0.53,29,18
+"map, offline",unknown,"offline beam search, speed only (G1)","1,389 [1,014, 1,624]",0.34,,0.12,"1,645 [1,364, 1,846]",0.31,,0.1,77,86

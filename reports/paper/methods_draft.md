@@ -94,6 +94,9 @@ The steering map filter has no calibration state, so its warm start equals its c
 
 ## Scoring
 Predictions are matched to the reference seconds by timestamp (no interpolation of the reference); per-episode
-metrics are ADE, FDE, P90, coverage at 10 / 25 / 50 / 100 m, success S(50 m, 0.9) and S(100 m, 0.8), the fde_gt_500
-and lost_road flags and, for offline Top-K rows, the oracle over candidates. Aggregates use medians and means with
-driver-cluster bootstrap CIs; gains are paired differences on the common episodes of two methods.
+metrics are ADE, FDE, P90, coverage at 10 / 25 / 50 / 100 / 200 / 500 m and its distance-weighted form, the
+time-free path recall and precision at 25 / 50 / 100 m (polylines resampled at 5 m, nearest-sample distances), the
+route-recovered flag (80% of the path within 50 m), the time until the error first exceeds 50 / 100 m, the
+destination flags at the final second, success S(50 m, 0.9) and S(100 m, 0.8), the fde_gt_500 and lost_road flags
+and, for offline Top-K rows, the oracle over candidates. Aggregates use medians and means with driver-cluster
+bootstrap CIs; gains are paired differences on the common episodes of two methods.
