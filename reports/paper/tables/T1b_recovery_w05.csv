@@ -1,0 +1,47 @@
+setting,heading,fold,method,n,within 50 m (time-aligned),within 100 m (time-aligned),distance within 100 m,path recovered @50 m,path recovered @100 m,path precision @50 m,route recovered (>= 80% @50 m),time before first 100 m miss,destination within 100 m,destination within 500 m
+no map,known,test,"curvature DR, class F reference (G5)",1917,0.46,0.64,0.64,0.56,0.71,0.57,0.27,0.64,0.27,0.82
+no map,known,test,"speed only, straight line (G1)",1917,0.22,0.3,0.3,0.27,0.33,0.27,0.09,0.29,0.07,0.22
+no map,known,test,"steering DR, nominal (G3)",1917,0.18,0.25,0.24,0.2,0.27,0.2,0.04,0.24,0.04,0.17
+no map,known,test,"steering DR, online offset (G3)",1917,0.17,0.25,0.24,0.2,0.27,0.2,0.03,0.24,0.04,0.17
+no map,known,test,"steering DR, train-fold calibrated (G3)",1917,0.17,0.24,0.23,0.19,0.26,0.19,0.04,0.24,0.05,0.18
+no map,known,test,hold start (G1),1917,0.02,0.03,0.03,0.01,0.03,,0.0,0.04,0.01,0.03
+no map,known,test,"learned causal GRU (G3), 3 seeds (mean)",1917,0.22,0.32,0.31,0.26,0.35,0.26,0.07,0.31,0.08,0.31
+no map,known,test,"learned physics residual + GRU (G3), 3 seeds (mean)",1917,0.2,0.29,0.28,0.23,0.32,0.23,0.06,0.28,0.07,0.25
+no map,known,few-shot,"curvature DR, class F reference (G5)",1963,0.48,0.67,0.66,0.56,0.72,0.56,0.27,0.67,0.28,0.84
+no map,known,few-shot,"speed only, straight line (G1)",1963,0.21,0.28,0.28,0.24,0.31,0.24,0.07,0.27,0.06,0.19
+no map,known,few-shot,"steering DR, nominal (G3)",1963,0.15,0.2,0.19,0.16,0.22,0.16,0.02,0.2,0.03,0.11
+no map,known,few-shot,"steering DR, online offset (G3)",1963,0.15,0.2,0.19,0.16,0.22,0.16,0.02,0.2,0.03,0.1
+no map,known,few-shot,"steering DR, train-fold calibrated (G3)",1963,0.14,0.2,0.19,0.16,0.22,0.16,0.02,0.2,0.03,0.1
+no map,known,few-shot,hold start (G1),1963,0.01,0.03,0.02,0.01,0.02,,0.0,0.03,0.0,0.02
+no map,known,few-shot,"learned causal GRU (G3), 3 seeds (mean)",1963,0.23,0.33,0.33,0.27,0.37,0.27,0.05,0.33,0.07,0.33
+no map,known,few-shot,"learned physics residual + GRU (G3), 3 seeds (mean)",1963,0.22,0.32,0.31,0.26,0.35,0.26,0.04,0.31,0.05,0.27
+no map,unknown,test,"speed only, straight line (G1)",1917,0.05,0.08,0.08,0.07,0.1,0.07,0.03,0.08,0.03,0.06
+no map,unknown,test,"steering DR, nominal (G3)",1917,0.03,0.06,0.05,0.05,0.08,0.05,0.01,0.06,0.01,0.05
+no map,unknown,test,hold start (G1),1917,0.02,0.03,0.03,0.01,0.03,,0.0,0.04,0.01,0.03
+no map,unknown,test,"learned causal GRU (G3), 3 seeds (mean)",1917,0.04,0.08,0.07,0.06,0.09,0.06,0.01,0.08,0.02,0.07
+no map,unknown,test,"learned physics residual + GRU (G3), 3 seeds (mean)",1917,0.04,0.07,0.06,0.05,0.08,0.05,0.01,0.07,0.01,0.06
+no map,unknown,few-shot,"speed only, straight line (G1)",1963,0.03,0.05,0.05,0.04,0.07,0.04,0.01,0.05,0.0,0.03
+no map,unknown,few-shot,"steering DR, nominal (G3)",1963,0.03,0.05,0.04,0.04,0.07,0.04,0.0,0.05,0.0,0.03
+no map,unknown,few-shot,hold start (G1),1963,0.01,0.03,0.02,0.01,0.02,,0.0,0.03,0.0,0.02
+no map,unknown,few-shot,"learned causal GRU (G3), 3 seeds (mean)",1963,0.03,0.06,0.05,0.04,0.07,0.04,0.0,0.06,0.01,0.05
+no map,unknown,few-shot,"learned physics residual + GRU (G3), 3 seeds (mean)",1963,0.03,0.05,0.05,0.04,0.07,0.04,0.0,0.05,0.0,0.05
+"map, online",known,test,"map particle filter, nominal steering (G3)",1917,0.63,0.81,0.81,0.89,0.9,0.88,0.85,0.77,0.59,0.83
+"map, online",known,test,"map particle filter, calibrated steering (G3)",1917,0.62,0.79,0.79,0.87,0.89,0.86,0.83,0.75,0.57,0.81
+"map, online",known,test,"map particle filter, speed only (G1)",1917,0.42,0.54,0.55,0.69,0.72,0.55,0.54,0.43,0.31,0.5
+"map, online",known,few-shot,"map particle filter, nominal steering (G3)",1963,0.74,0.85,0.85,0.9,0.91,0.89,0.86,0.81,0.69,0.85
+"map, online",known,few-shot,"map particle filter, calibrated steering (G3)",1963,0.73,0.84,0.84,0.89,0.9,0.87,0.85,0.79,0.68,0.84
+"map, online",known,few-shot,"map particle filter, speed only (G1)",1963,0.4,0.49,0.5,0.62,0.65,0.44,0.44,0.37,0.24,0.39
+"map, online",unknown,test,"map particle filter, nominal steering (G3)",1917,0.52,0.68,0.68,0.84,0.87,0.61,0.77,0.23,0.54,0.77
+"map, online",unknown,test,"map particle filter, speed only (G1)",1917,0.26,0.34,0.34,0.55,0.59,0.23,0.34,0.1,0.2,0.32
+"map, online",unknown,few-shot,"map particle filter, nominal steering (G3)",1963,0.63,0.73,0.74,0.85,0.87,0.64,0.79,0.2,0.65,0.79
+"map, online",unknown,few-shot,"map particle filter, speed only (G1)",1963,0.24,0.3,0.3,0.49,0.54,0.2,0.27,0.07,0.16,0.26
+"map, offline",known,test,"offline beam search, nominal steering (G3)",1917,0.66,0.82,0.82,0.89,0.91,0.9,0.85,0.81,0.6,0.84
+"map, offline",known,test,"offline beam search, calibrated steering (G3)",1917,0.65,0.8,0.81,0.88,0.89,0.88,0.83,0.8,0.58,0.83
+"map, offline",known,test,"offline beam search, speed only (G1)",1917,0.44,0.56,0.56,0.64,0.66,0.67,0.52,0.56,0.33,0.51
+"map, offline",known,few-shot,"offline beam search, nominal steering (G3)",1963,0.76,0.86,0.87,0.91,0.91,0.91,0.88,0.86,0.71,0.86
+"map, offline",known,few-shot,"offline beam search, calibrated steering (G3)",1963,0.75,0.85,0.86,0.89,0.9,0.9,0.86,0.85,0.68,0.84
+"map, offline",known,few-shot,"offline beam search, speed only (G1)",1963,0.42,0.51,0.52,0.57,0.58,0.59,0.43,0.51,0.26,0.41
+"map, offline",unknown,test,"offline beam search, nominal steering (G3)",1917,0.61,0.75,0.76,0.82,0.83,0.82,0.79,0.75,0.56,0.78
+"map, offline",unknown,test,"offline beam search, speed only (G1)",1917,0.25,0.34,0.34,0.4,0.42,0.42,0.32,0.34,0.2,0.32
+"map, offline",unknown,few-shot,"offline beam search, nominal steering (G3)",1963,0.72,0.81,0.81,0.85,0.86,0.85,0.83,0.81,0.67,0.81
+"map, offline",unknown,few-shot,"offline beam search, speed only (G1)",1963,0.24,0.31,0.31,0.35,0.37,0.37,0.27,0.31,0.16,0.26

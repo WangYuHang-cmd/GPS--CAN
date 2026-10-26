@@ -25,6 +25,33 @@ configured extract) and are excluded from the map rows only.
 | offline beam search, nominal steering (Top-1) | G3 + map | 38 [24, 55] | 21 [17, 42] | 30 [24, 42] |
 | offline beam search, Top-10 oracle | G3 + map | 31 | 17 | 22 |
 
+## 1b. How much of the trajectory is recovered (5-minute windows, start known; test / few_shot means over episodes)
+
+Recovery metrics added 2026-10-25 (same episodes and predictions, rescored). Time-aligned: c100 = share of reference seconds within
+100 m; time-free: path recall@50 = share of the reference path length within 50 m of the predicted path; route recovered = recall@50
+>= 0.8; continuous = share of the window before the error first exceeds 100 m; destination = final second within 100 m / 500 m.
+
+| method | heading | c100 | path recall@50 | path precision@50 | route recovered | continuous (100 m) | destination 100 / 500 m |
+|---|---|---|---|---|---|---|---|
+| map particle filter, steering (G3) | known | 0.81 / 0.85 | 0.89 / 0.90 | 0.88 / 0.89 | 0.85 / 0.86 | 0.77 / 0.81 | 0.59 / 0.69 and 0.83 / 0.85 |
+| offline beam search, steering (G3) | known | 0.82 / 0.86 | 0.89 / 0.91 | 0.90 / 0.91 | 0.85 / 0.88 | 0.81 / 0.86 | 0.60 / 0.71 and 0.84 / 0.86 |
+| map particle filter, speed only (G1) | known | 0.54 / 0.49 | 0.69 / 0.62 | 0.55 / 0.44 | 0.54 / 0.44 | 0.43 / 0.37 | 0.31 / 0.24 and 0.50 / 0.39 |
+| map particle filter, steering (G3) | unknown | 0.68 / 0.73 | 0.84 / 0.85 | 0.61 / 0.64 | 0.77 / 0.79 | 0.23 / 0.20 | 0.54 / 0.65 and 0.77 / 0.79 |
+| offline beam search, steering (G3) | unknown | 0.75 / 0.81 | 0.82 / 0.85 | 0.82 / 0.85 | 0.79 / 0.83 | 0.75 / 0.81 | 0.56 / 0.67 and 0.78 / 0.81 |
+| curvature DR, class F reference (G5), no map | known | 0.64 / 0.67 | 0.56 / 0.56 | 0.57 / 0.56 | 0.27 / 0.27 | 0.64 / 0.67 | 0.27 / 0.28 and 0.82 / 0.84 |
+| learned GRU (G3, seed 0), no map | known | 0.31 / 0.33 | 0.26 / 0.27 | 0.26 / 0.27 | 0.07 / 0.04 | 0.31 / 0.32 | 0.08 / 0.07 and 0.30 / 0.33 |
+| speed only, straight line (G1), no map | known | 0.30 / 0.28 | 0.27 / 0.24 | 0.27 / 0.24 | 0.09 / 0.07 | 0.29 / 0.27 | 0.07 / 0.06 and 0.22 / 0.19 |
+| steering DR, nominal (G3), no map | known | 0.25 / 0.20 | 0.20 / 0.16 | 0.20 / 0.16 | 0.04 / 0.02 | 0.24 / 0.20 | 0.04 / 0.03 and 0.17 / 0.11 |
+| steering DR, nominal (G3), no map | unknown | 0.06 / 0.05 | 0.05 / 0.04 | 0.05 / 0.04 | 0.01 / 0.00 | 0.06 / 0.05 | 0.01 / 0.00 and 0.05 / 0.03 |
+| hold start (G1) | either | 0.03 / 0.03 | 0.01 / 0.01 | undefined | 0.00 / 0.00 | 0.04 / 0.03 | 0.01 / 0.00 and 0.03 / 0.02 |
+
+Reading: with a road map and the steering angle, about 85% of the 5-minute episodes have their route recovered (at least 80% of the
+path within 50 m), the predicted path covers about 90% of the true path within 50 m, and the destination is within 100 m in 59 to
+71% and within 500 m in 83 to 86% of the episodes. Without a map, CAN-only methods recover 16 to 27% of the path at 50 m and the
+route in at most 9% of the episodes; the class-F reference recovers 56% of the path and the route in 27%. With the start heading
+unknown, the geometric recovery of the map filter stays high (recall 0.84, route 0.77) while its time-aligned coverage drops and
+its continuous share is only 0.23 (the heading is resolved during the first seconds); the offline search is almost unaffected.
+
 ## 2. Five-minute windows, start known, heading unknown
 
 | method | test | few_shot | val |
@@ -51,7 +78,7 @@ configured extract) and are excluded from the map rows only.
 - Train-fold platform calibration helps only where the platform was seen: val -29 m [-62, -10], test +13 m [-55, +1,043] (mean +641 m).
 - Map minus no-map (nominal steering, heading known, 5 min): test -689 m [-1,485, -298], win rate 0.84 on val; heading unknown -2,063 m on test.
 - Offline beam minus online PF: -2 m (heading known), -18 m median and about -180 m mean (heading unknown): whole-path search resolves the unknown start heading.
-- Learning: the GRU models cut the no-map error to 0.3 to 0.5 of nominal DR on val and few_shot (paired -600 to -900 m on few_shot, win 0.8) but only weakly on test (-86 to -171 m, CIs span 0): the learned motion correction transfers across drivers, not across the mostly unseen test platforms. Inside the map particle filter the learned omega gives no gain on any fold (+0 to +8 m paired).
+- Learning: the GRU models cut the no-map error to 0.3 to 0.5 of nominal DR on val and few_shot (paired -600 to -900 m on few_shot, win 0.8) but only weakly on test (-86 to -171 m, CIs span 0): the learned motion correction transfers across drivers, not across the mostly unseen test platforms. Inside the map particle filter the learned omega gives no gain on any fold (three seeds: paired median +0 to +8 m, win rates 0.30 to 0.45) and hurts the tail: the test median rises from 44 m (nominal steering) to 78 to 95 m and c100 falls from 0.81 to 0.63 to 0.68, because a minority of episodes leave the road more often with the learned heading rate.
 - CAN yaw rate (G4) beats steering DR where available on few_shot and val (-338 / -169 m) but not on test (+519 m, CI [-2,290, +914]).
 - Perturbation probes (inputs only): speed quantised to 1 m/s and speed noise of 0.5 m/s change the 5-min DR medians by 0 m; steering held at 1 Hz by 0 to 4 m (means +5 to +17 m). Coarse CAN is as useful as raw CAN at this horizon.
 - Class-F curvature inside the map particle filter (reference only) equals nominal steering with the map: 45 vs 44 m on test, 29 vs 27 m on few_shot (heading known), 148 vs 147 m and 87 vs 94 m (heading unknown). With a map, the quality of the heading-rate source stops mattering at 5 min, exactly as for the learned omega.

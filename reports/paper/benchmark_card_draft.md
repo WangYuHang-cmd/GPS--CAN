@@ -137,7 +137,12 @@ Top-K). Warm-start variants of the calibrating methods (research rows).
 | map, heading unknown | offline beam search, steering | 43 [26, 59] | 24 [17, 44] |
 
 Coverage at 5 minutes: c100 about 0.25 to 0.33 for the CAN-only no-map methods, 0.81 to 0.86 with the map; success
-S(50 m, 0.9) 0.37 (test) and 0.54 (few_shot) for the map particle filter. Longer horizons (steering + map, heading
+S(50 m, 0.9) 0.37 (test) and 0.54 (few_shot) for the map particle filter. Recovery (test / few_shot, heading known):
+the map filter recovers the route (at least 80% of the path within 50 m) in 85 / 86% of the episodes, covers 89 / 90%
+of the true path within 50 m and ends within 100 m of the true destination in 59 / 69% (500 m: 83 / 85%); the
+offline search 85 / 88%, 89 / 91% and 60 / 71%; with the heading unknown the filter still recovers the route in
+77 / 79%. Without a map the CAN-only methods cover 16 to 27% of the path and recover the route in at most 9%; the
+class-F reference 56% and 27%. Longer horizons (steering + map, heading
 known): 15 min 197 / 131 m with lost_road 0.71 / 0.57 (filter) and 158 / 109 m (beam); whole drives 1,598 / 127 m
 (filter) and 1,147 / 64 m (beam) with lost_road 0.45 to 0.82. One minute: 16 m (filter), 13 m (beam), 49 m straight
 line, 59 m steering DR on test.
@@ -146,7 +151,8 @@ Paired findings: steering does not beat the straight line without a map (G3 minu
 few_shot, -32 m val; CIs include 0); the map is worth -689 m [-1,485, -298] on test with heading known and about
 -2,000 m with heading unknown; the offline search beats the online filter by -2 m (heading known) and -18 m median /
 about -180 m mean (heading unknown); learned motion models cut the no-map error to 0.3 to 0.5 of nominal DR on val
-and few_shot but only weakly on test (CIs span 0), and give no gain inside the map filter; coarse CAN (1 m/s speed
+and few_shot but only weakly on test (CIs span 0), and give no gain inside the map filter (three seeds: paired
+median +0 to +8 m; the test median rises from 44 to 78 to 95 m because a minority of episodes leave the road); coarse CAN (1 m/s speed
 quantisation, 1 Hz steering) changes DR medians by 0 to 4 m; a 20 m start shift costs DR +2 m and the filter 0 m;
 30 degrees of heading noise costs DR +107 m and the filter +4 m.
 

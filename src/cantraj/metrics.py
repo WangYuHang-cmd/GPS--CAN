@@ -66,7 +66,8 @@ def path_recovery(pred_xy, ref_xy, radii=PATH_RADII_M, spacing=5.0, max_pts=4000
     d_pred = cKDTree(R).query(P, k=1)[0]             # predicted samples -> nearest reference sample
     for r in radii:
         out[f"path_recall{int(r)}"] = float(np.mean(d_ref <= r))
-        out[f"path_prec{int(r)}"] = float(np.mean(d_pred <= r)) if len(P) > 1 else np.nan
+        # precision is undefined for a (near) zero-length predicted path (a method that holds the start recovers nothing)
+        out[f"path_prec{int(r)}"] = float(np.mean(d_pred <= r)) if L_pred >= spacing else np.nan
     return out
 
 

@@ -98,3 +98,10 @@ def test_missing_predictions_break_the_predicted_path():
     out = M.episode_summary(M.point_errors(pred, ref), t_rel=t, pred_xy=pred, ref_xy=ref)
     assert abs(out["path_recall50"] - 100 / 300) < 0.03 and out["path_prec50"] == 1.0
     assert out["n_missing"] == 200 and out["t_ok100"] == 100.0 and not out["end_within_500"]
+
+
+def test_zero_length_prediction_has_no_precision_and_no_recall():
+    t, ref = _path()
+    pred = np.repeat(ref[:1], len(ref), axis=0)                        # holds the start
+    out = M.episode_summary(M.point_errors(pred, ref), t_rel=t, pred_xy=pred, ref_xy=ref)
+    assert np.isnan(out["path_prec50"]) and out["path_recall50"] < 0.05 and not out["route_ok"]

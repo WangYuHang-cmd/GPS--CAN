@@ -60,7 +60,7 @@ def _rec_seeds(h, kind, proto, win, fold):
     rows = h[(h.protocol == proto) & (h.win == win) & (h.fold == fold) & h.method.str.match(rf"^learned_{kind}_s\d+__G3$")]
     if rows.empty:
         return None
-    return {name: (round(float(rows[c].mean()), 2) if c in rows else np.nan) for c, name in REC_COLS}
+    return {"n": int(rows.n_episodes.min())} | {name: (round(float(rows[c].mean()), 2) if c in rows else np.nan) for c, name in REC_COLS}
 
 
 def t1b_recovery(h):
@@ -83,8 +83,10 @@ def t1b_recovery(h):
                 for kind in ("gru", "resid"):
                     rs = _rec_seeds(h, kind, proto, "w05", fold)
                     if rs:
-                        out.append(dict(setting=setting, heading=heading, fold=FOLD[fold], method=NAMES[f"learned_{kind}"] + ", 3 seeds", n=np.nan, **rs))
-    return pd.DataFrame(out)
+                        out.append(dict(setting=setting, heading=heading, fold=FOLD[fold], method=NAMES[f"learned_{kind}"] + ", 3 seeds (mean)", **rs))
+    df = pd.DataFrame(out)
+    df["n"] = df["n"].astype(int)
+    return df
 
 
 def seed_rows(h, kind, proto, win, fold):
