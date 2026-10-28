@@ -10,7 +10,7 @@ WORKERS=${WORKERS:-3}
 FOLDS=${FOLDS:-"val test few_shot_heldout"}
 WINS=${WINS:-"w05"}
 LOG=${CANTRAJ_LOGS:-logs}/can2gps_warmup.log
-CK=/data/backup/DriveDNA-GPS_bench/models/learn/gru/seed0
+CK=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn/gru/seed0
 COMMON="--run full_v1 --manifest $M --eligible-only --folds $FOLDS --wins $WINS --workers $WORKERS --resume --version v1"
 for W in 300 inf; do
   if [ "$W" = 300 ]; then sfx=_wu5; else sfx=_wuall; fi

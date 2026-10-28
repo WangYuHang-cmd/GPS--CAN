@@ -29,15 +29,19 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from cantraj import io, paths, predfile, registry, replay  # noqa: E402
-from cantraj.episodes import DriveData  # noqa: E402
+from cantraj.episodes import DriveData, truncate  # noqa: E402
 from cantraj.inputs import StaticParams  # noqa: E402
 from cantraj.baselines.dead_reckoning import DeadReckoning  # noqa: E402
 from cantraj.baselines.p0_hold import P0Hold  # noqa: E402
 from cantraj.baselines.prior import StartPrior  # noqa: E402
 from cantraj.baselines.retrieval import RouteRetrieval  # noqa: E402
 from cantraj.baselines.map_pf import MapParticleFilter  # noqa: E402
-from cantraj.baselines.learned import LearnedDR  # noqa: E402
+from cantraj.baselines.learned import LearnedDR, SigDR  # noqa: E402
 from cantraj.baselines.map_beam import MapBeamSearch  # noqa: E402
+from cantraj.baselines.macrotracking import MacroTracking  # noqa: E402
+from cantraj.baselines.elastic_pathing import ElasticPathing  # noqa: E402
+from cantraj.baselines.can_trace import CANTrace  # noqa: E402
+from cantraj.baselines.opd2 import OPD2  # noqa: E402
 from cantraj.learn.provider import MotionProvider  # noqa: E402
 from cantraj.maps.graph import EpisodeGraphView, build_graph_tiles  # noqa: E402
 from cantraj.perturb import episode_rng, parse_spec, perturb_stream  # noqa: E402
@@ -64,6 +68,8 @@ BASELINES = {
     "retrieval": lambda: RouteRetrieval(),
     "map_pf_none": lambda: MapParticleFilter("none"),
     "map_pf_steer": lambda: MapParticleFilter("steer"),
+    "map_pf_steer_s1": lambda: MapParticleFilter("steer", seed=1),          # second random seed (seed variability, A3 check)
+    "map_pf_steer_lineage": lambda: MapParticleFilter("steer", readout="lineage"),   # same filter, output = best surviving lineage (offline read-out)
     "map_pf_steer_offfixed": lambda: MapParticleFilter("steer", offset_mode="fixed"),
     "map_pf_steer_calib": lambda: MapParticleFilter("steer", offset_mode="fixed", use_eff_ratio=True),
     "map_pf_can_yaw": lambda: MapParticleFilter("can_yaw"),
@@ -74,9 +80,28 @@ BASELINES = {
     "map_beam_curvature": lambda: MapBeamSearch("curvature"),
     "learned": lambda: LearnedDR(CKPT),                                    # name from the checkpoint (learned_gru / learned_resid)
     "map_pf_learned": lambda: MapParticleFilter("steer", omega_source=MotionProvider(CKPT)),
+    "sig_dr": lambda: SigDR(CKPT),                                         # signal-combination study, no map (learn/sig.py)
+    "map_pf_sig": lambda: MapParticleFilter("steer", omega_source=_sig_provider(CKPT)),   # same models, fixed turn-budget decoder
+    # published speed-only method; friction / stop threshold chosen on 60 val drives (reports/icde/ep_val_selection.csv)
+    "elastic_pathing": lambda: ElasticPathing(friction=0.15, v_zero=1.0),                 # native: start known, heading unused (F-M-Hm)
+    "elastic_pathing_hp": lambda: ElasticPathing(heading=True, friction=0.15, v_zero=1.0),  # adapted: start edges within 45 deg of theta0 (F-M-Hp)
+    "can_trace": lambda: CANTrace(start="known"),                          # published speed + accelerator-pedal method, known-start adaptation (F-M-Hm, G2)
+    "can_trace_area": lambda: CANTrace(start="area"),                      # the paper's prior: 5 km square around p0, any start junction
+    "opd2": lambda: OPD2(),                                                # published method, final output (F-M-Hp; delayed online <= 3 s)
+    "opd2_online": lambda: OPD2(readout="online"),                         # strictly online read-out (O-M-Hp)
+    "opd2_calib": lambda: OPD2(calib=True),                                # + train-fold steering calibration
+    "opd2_wrapfix": lambda: OPD2(as_released=False),                       # released bearing-wrap slip fixed (sensitivity)
+    "macrotracking": lambda: MacroTracking(),                              # published method (O-M-Hp), re-implemented as released
+    "macrotracking_calib": lambda: MacroTracking(calib=True),              # + train-fold steering calibration
+    "macrotracking_wrapfix": lambda: MacroTracking(as_released=False),     # wrapped angle comparisons (sensitivity)
 }
 CKPT = None
 PERTURB, PERTURB_SPEC = {}, ""
+
+
+def _sig_provider(d):
+    from cantraj.learn.sig import SigProvider
+    return SigProvider(d)
 INIT_PERTURB, INIT_SPEC = {}, ""
 
 
@@ -134,6 +159,28 @@ def static_lookup():
     return get
 
 
+def sha_files(files):
+    h = hashlib.sha256()
+    for f in sorted(files):
+        h.update(os.path.relpath(f, paths.GPS_DIR).encode())
+        h.update(open(f, "rb").read())
+    return h.hexdigest()[:16]
+
+
+def version_fields(args):
+    """Provenance recorded in every part's meta.json (benchmark v1.1 run registry)."""
+    src = glob.glob(os.path.join(paths.GPS_DIR, "src", "cantraj", "**", "*.py"), recursive=True) + [os.path.abspath(__file__)]
+    tm = os.path.join(paths.MANIFESTS, "map_tiles_v2.csv" if "tiles_v2" in args.tiles_dir else "map_tiles.csv")
+    return dict(code_sha=sha_files(src),
+                scorer_sha=sha_files([os.path.join(paths.GPS_DIR, "src", "cantraj", f) for f in ("metrics.py", "scoring.py")]),
+                map_version=os.path.basename(os.path.normpath(args.tiles_dir)),
+                tiles_manifest_sha=sha_files([tm]) if os.path.exists(tm) else None,
+                map_episodes=os.path.basename(args.map_episodes) if args.map_episodes else None,
+                map_episodes_sha=sha_files([args.map_episodes]) if args.map_episodes else None,
+                episode_visibility=not args.no_visibility,
+                manifest_sha=sha_files([args.manifest]))
+
+
 def git_hash():
     try:
         return subprocess.check_output(["git", "-C", paths.DRIVEDNA, "rev-parse", "--short", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
@@ -148,7 +195,7 @@ def _deny(*a, **k):
 def _drive_job(job):
     """Run every requested (protocol, baseline) on the episodes of one drive after loading it once.
     Returns ({(proto, baseline): frames}, skipped, {(proto, baseline): missing_eids}, secs)."""
-    (driver, drive, eids_by_proto, wins, model_canon, protos, baselines, group, layer, time_comp, tiles_dir, ckpt, perturb_spec, warmup_s) = job
+    (driver, drive, eids_by_proto, wins, model_canon, protos, baselines, group, layer, time_comp, tiles_dir, ckpt, perturb_spec, warmup_s, visibility, set_spec, prefix_s) = job
     global CKPT, PERTURB, PERTURB_SPEC, INIT_PERTURB, INIT_SPEC
     CKPT = ckpt
     PERTURB_SPEC = (perturb_spec or "").split("||")[0]     # passed through the job tuple: module globals are not shared with the workers
@@ -166,9 +213,11 @@ def _drive_job(job):
         eps = {}
         for w in wins:
             for e in dd.episodes(w):
-                eps[e.episode_id] = e
+                eps[e.episode_id] = truncate(e, prefix_s) if prefix_s else e
     except Exception as e:  # noqa: BLE001
-        return {}, [(f"{driver}/{drive}", f"drive load failed: {type(e).__name__}: {str(e)[:60]}")], {}, time.time() - t0
+        return {}, [(f"{driver}/{drive}", f"drive load failed: {type(e).__name__}: {str(e)[:60]}")], {}, time.time() - t0, []
+    t_loaded = time.time() - t0
+    timing = [("_load", "_drive", f"{driver}/{drive}", t_loaded)]
     static, plat = static_lookup()(driver, drive, model_canon)
     io.load_gps = _deny
     RouteRetrieval._exclude = driver
@@ -182,7 +231,7 @@ def _drive_job(job):
                 for eid in eids:
                     ep = eps.get(eid)
                     if ep is None:
-                        skipped.append((eid, "episode not rebuilt"))
+                        skipped.append((eid, "episode not rebuilt", proto, baseline))
                         continue
                     graph = None
                     if spec["map"] == "osm":
@@ -197,14 +246,18 @@ def _drive_job(job):
                             tiles = set()
                             for e in w_eps:
                                 tiles.update(tiles_in_radius(e.init_full["p0_lat"], e.init_full["p0_lon"], min(registry.map_radius_m(spec, e.t_end - e.t0), MAP_CAP_M)))
+                            t_g = time.time()
                             graphs[win] = build_graph_tiles(tiles_dir, tiles, fr)
+                            timing.append(("_graph", win, f"{driver}/{drive}", time.time() - t_g))
                         g_drive = graphs[win]
-                        need = [f"t{i}_{j}" for i, j in tiles_in_radius(ep.init_full["p0_lat"], ep.init_full["p0_lon"], min(registry.map_radius_m(spec, ep.t_end - ep.t0), MAP_CAP_M))]
+                        need_t = tiles_in_radius(ep.init_full["p0_lat"], ep.init_full["p0_lon"], min(registry.map_radius_m(spec, ep.t_end - ep.t0), MAP_CAP_M))
+                        need = [f"t{i}_{j}" for i, j in need_t]
                         have = {f"t{i}_{j}" for i, j in tiles_in_radius(ep.init_full["p0_lat"], ep.init_full["p0_lon"], MAP_CAP_M) if os.path.exists(os.path.join(tiles_dir, f"t{i}_{j}", "ways.parquet"))}
                         if g_drive is None or not all(t in have for t in need):
                             missing.setdefault(key, []).append(eid)
                             continue
-                        graph = EpisodeGraphView(g_drive, ep.frame)
+                        # v1.1: only the episode's own tiles are visible, bearings in the episode frame
+                        graph = EpisodeGraphView(g_drive, ep.frame, visible_tiles=need_t if visibility else None)
                     try:
                         inp = dd.inputs(ep, group, proto, static, map_graph=graph, warmup_s=warmup_s)
                         if PERTURB:                     # research ablation: degrade the inputs the baseline sees (never the reference)
@@ -212,12 +265,18 @@ def _drive_job(job):
                         if INIT_PERTURB:                # research ablation: wrong start position / heading given to the baseline
                             inp.init = perturb_init(inp.init, INIT_PERTURB, episode_rng(eid, "init|" + INIT_SPEC))
                         b = BASELINES[baseline]()
+                        for k_, v_ in (set_spec or {}).items():        # validation-only parameter grids (--set)
+                            if not hasattr(b, k_):
+                                raise AttributeError(f"{baseline} has no parameter {k_}")
+                            setattr(b, k_, v_)
+                        t_e = time.time()
                         frames.setdefault(key, []).append(replay.run_episode(b, inp, ep, spec))
+                        timing.append((proto, baseline, eid, time.time() - t_e))
                     except Exception as e:  # noqa: BLE001
-                        skipped.append((eid, f"{baseline}: {type(e).__name__}: {str(e)[:60]}"))
+                        skipped.append((eid, f"{baseline}: {type(e).__name__}: {str(e)[:60]}", proto, baseline))
     finally:
         io.load_gps = real_load
-    return frames, skipped, missing, time.time() - t0
+    return frames, skipped, missing, time.time() - t0, timing
 
 
 def main():
@@ -246,7 +305,24 @@ def main():
     ap.add_argument("--init-perturb", default=None, help="initialisation ablation, e.g. pos_m=20,heading_deg=10: shift the given start / heading (research ablation)")
     ap.add_argument("--stem-suffix", default="", help="appended to every method stem, e.g. _pq1 -> dr_steer_pq1__G3 (use with --perturb)")
     ap.add_argument("--flush-min", type=float, default=15.0, help="rewrite the part files with everything predicted so far every N minutes (0 = only at the end); lets --resume recover a killed pass")
+    ap.add_argument("--map-episodes", default=None, help="v1.1: parquet with episode_id, map_ok (start on the map, every tile present); map protocols only run map_ok episodes, the rest go to map_start_missing.csv")
+    ap.add_argument("--no-visibility", action="store_true", help="v1 behaviour: the whole per-drive union graph is visible to every episode (only for the A3 comparison)")
+    ap.add_argument("--set", default=None, help="override baseline attributes, e.g. f=0.15,v_zero=0.5 (parameter selection on validation folds only; use with --stem-suffix)")
+    ap.add_argument("--episodes-file", default=None, help="CSV with an episode_id column: run only these episodes (same-cohort study)")
+    ap.add_argument("--prefix-s", type=float, default=None, help="same-cohort horizon study: cut every episode to its first N seconds (same ids; use a separate --run)")
     args = ap.parse_args()
+    is_map = any(registry.protocol_spec(p)["map"] == "osm" for p in args.protocols)
+    if args.version == "v1.1" and is_map and ("tiles_v2" not in args.tiles_dir or not args.map_episodes):
+        raise SystemExit("v1.1 map runs need --tiles-dir .../maps/tiles_v2 and --map-episodes manifests/episode_map_v11.parquet")
+    map_ok = None
+    if args.map_episodes and is_map:
+        me = pd.read_parquet(args.map_episodes, columns=["episode_id", "map_ok"])
+        map_ok = set(me.episode_id[me.map_ok])
+    vfields = version_fields(args)
+    set_spec = {k.strip(): (int(v) if v.strip().lstrip("-").isdigit() else float(v)) for k, v in (kv.split("=") for kv in args.set.split(",") if kv.strip())} if args.set else {}
+    if set_spec and args.folds and any(f in ("test", "few_shot_heldout") for f in args.folds) and not args.stem_suffix == "":
+        print(f"note: --set {set_spec} on a test fold (only for the selected configuration)", flush=True)
+    vfields["set"] = set_spec or None
     global CKPT
     CKPT = args.ckpt
     baselines = args.baselines or [args.baseline]
@@ -262,6 +338,8 @@ def main():
         man = man[man.eligible_main]
     if args.folds and "fold" in man:
         man = man[man.fold.isin(args.folds)]
+    if args.episodes_file:
+        man = man[man.episode_id.isin(set(pd.read_csv(args.episodes_file).episode_id))]
     if args.drives_file:
         dl = pd.read_csv(args.drives_file)
         keys = set(zip(dl.driver, dl.drive))
@@ -285,11 +363,15 @@ def main():
                         pass
             done[(proto, b)] = d
     jobs = []
+    start_missing = []
     for (driver, drive), g in man.groupby(["driver", "drive"], sort=True):
         eids_by = {}
         for proto in args.protocols:
             for b in baselines:
                 e = [x for x in g.episode_id if x not in done[(proto, b)]]
+                if map_ok is not None and registry.protocol_spec(proto)["map"] == "osm":
+                    start_missing += [(x, proto, stems[b]) for x in e if x not in map_ok]
+                    e = [x for x in e if x in map_ok]
                 if e:
                     eids_by[(proto, b)] = e
         if not eids_by:
@@ -297,8 +379,16 @@ def main():
         jobs.append((driver, drive, eids_by, sorted(g.win.unique()), g.model_canon.iloc[0] if "model_canon" in g else None,
                      list(args.protocols), list(baselines), args.group, args.layer, args.time_comp, args.tiles_dir, args.ckpt,
                      f"{args.perturb or ''}||{args.init_perturb}" if args.init_perturb else args.perturb,
-                     (float("inf") if str(args.warmup_s).lower() in ("inf", "all") else float(args.warmup_s)) if args.warmup_s else 0.0))
+                     (float("inf") if str(args.warmup_s).lower() in ("inf", "all") else float(args.warmup_s)) if args.warmup_s else 0.0,
+                     not args.no_visibility, set_spec, args.prefix_s))
     print(f"{len(jobs)} drives, baselines {baselines}, protocols {args.protocols}, workers {args.workers}", flush=True)
+    if start_missing:
+        sm_path = os.path.join(paths.PREDS, args.run, "map_start_missing.csv")
+        sm = pd.DataFrame(start_missing, columns=["episode_id", "protocol", "method"])
+        if os.path.exists(sm_path):
+            sm = pd.concat([pd.read_csv(sm_path), sm]).drop_duplicates()
+        sm.to_csv(sm_path, index=False)
+        print(f"map_start_missing (not run, v1.1 rule): {len(set(x[0] for x in start_missing))} episodes -> {sm_path}", flush=True)
     frames, skipped, missing, secs = {}, [], {}, []
     n_done = 0
     last_flush = [time.time()]
@@ -325,11 +415,27 @@ def main():
                                                   wall_s=round(time.time() - t_run, 1), drive_secs_p50=float(np.median(secs)) if secs else None,
                                                   partial=(not final), drives_done=n_done, drives_total=len(jobs),
                                                   pf_tick_hz=(1.0 / BASELINES[b]().tick_dt) if getattr(BASELINES[b](), "tick_dt", None) else None,
-                                                  perturb=args.perturb or None, init_perturb=args.init_perturb or None, warmup_s=args.warmup_s or None))
+                                                  perturb=args.perturb or None, init_perturb=args.init_perturb or None, warmup_s=args.warmup_s or None,
+                                                  tiles_dir=args.tiles_dir, **vfields))
                     if final:
                         print(f"{proto} {b} {args.group} shard {args.shard}: {df.episode_id.nunique()} episodes, {len(df)} rows, map_missing {len(mi)} -> {part}", flush=True)
                 elif final:
                     print(f"{proto} {b} {args.group} shard {args.shard}: nothing new; map_missing {len(mi)}", flush=True)
+                if final and timings:          # per-episode inference seconds (and per-drive load / graph seconds) for the cost analysis
+                    tm = pd.DataFrame([t_ for t_ in timings if t_[0] in (proto, "_load", "_graph") and (t_[0] != proto or t_[1] == b)],
+                                      columns=["protocol", "baseline", "key", "secs"])
+                    tm_path = os.path.join(out_dir, f"{stems[b]}.part{k}.timing.csv")
+                    if args.resume and os.path.exists(tm_path):
+                        tm = pd.concat([pd.read_csv(tm_path), tm]).drop_duplicates(["protocol", "baseline", "key"], keep="last")
+                    tm.to_csv(tm_path, index=False)
+                if final:                      # every episode that was attempted but produced no prediction, with its reason
+                    sk = [(s_[0], s_[1]) for s_ in skipped if len(s_) < 4 or (s_[2] == proto and s_[3] == b)]
+                    sk_path = os.path.join(out_dir, f"{stems[b]}.part{k}.skipped.csv")
+                    if sk:
+                        sk_df = pd.DataFrame(sk, columns=["episode_id", "reason"])
+                        if args.resume and os.path.exists(sk_path):
+                            sk_df = pd.concat([pd.read_csv(sk_path), sk_df]).drop_duplicates("episode_id", keep="last")
+                        sk_df.to_csv(sk_path, index=False)
                 if final and mi:
                     mm_path = os.path.join(paths.PREDS, args.run, "map_missing.csv")
                     mm = pd.DataFrame(dict(episode_id=mi, protocol=proto, method=stems[b]))
@@ -339,7 +445,10 @@ def main():
         if not final:
             print(f"  partial parts written after {n_done}/{len(jobs)} drives, {time.time() - t_run:.0f}s", flush=True)
 
-    def collect(fr, sk, mi, sc):
+    timings = []
+
+    def collect(fr, sk, mi, sc, tm=()):
+        timings.extend(tm)
         nonlocal n_done
         for key, lst in fr.items():
             frames.setdefault(key, []).extend(lst)

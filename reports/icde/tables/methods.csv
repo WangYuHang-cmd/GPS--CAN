@@ -1,0 +1,12 @@
+method,source,signals,priors,map,mode,training data,output
+Straight line,baseline,speed,"$p_0, \theta_0$",--,online,--,position
+Steering DR,baseline,"speed, steering","$p_0, \theta_0$",--,online,-- / calib.$^a$,position
+Learned GRU,baseline,"speed, steering","$p_0, \theta_0$",--,online,train GPS,position
+Map PF,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM,online,--,position
+Map beam,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM,offline,--,top-10 paths
+MacroTracking~\cite{gazdag2023privacy},re-impl.,"speed, steering","$p_0, \theta_0$",OSM,online,-- / calib.$^a$,position
+OPD-II~\cite{bianchi2025opd},re-impl.,"speed, steering","$p_0, \theta_0$",OSM (Meili),"delayed $\le$3\,s$^b$",-- / calib.$^a$,position
+Elastic Pathing~\cite{gao2017elastic},re-impl.,"speed (1\,Hz)",$p_0$ (+$\theta_0$)$^c$,OSM,offline,val (2 values),top-$n$ paths
+CAN-Trace~\cite{lin2025cantrace},re-impl.,"speed, accel.\ pedal",area or $p_0$$^c$,OSM,offline,--,top-10 paths
+Signal-set GRU (S1--S4),study,per set,"$p_0, \theta_0$",-- / OSM,online,train GPS,position
+Curvature DR (class F),reference,"speed, localizer curv.","$p_0, \theta_0$",-- / OSM,online,GPS-informed$^d$,position

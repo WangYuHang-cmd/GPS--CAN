@@ -51,3 +51,16 @@ def test_pf_tick_mode_is_causal():
     q, xa = _run(MapParticleFilter("steer", tick_hz=10.0, seed=0), a, g)
     q, xb = _run(MapParticleFilter("steer", tick_hz=10.0, seed=0), b, g)
     assert np.allclose(xa[q <= 30.0], xb[q <= 30.0])
+
+
+def test_pf_lineage_readout_is_a_whole_path_on_the_road():
+    """Offline decode-output control: the same filter, output = ancestry of the heaviest final particle."""
+    g = grid_graph()
+    inp = _inputs_100hz(0.0)
+    inp.map_graph = g
+    q = np.arange(1.0, 60.0, 1.0)
+    xy, th, _, _ = MapParticleFilter("steer", tick_hz=10.0, seed=0, readout="lineage").reconstruct(inp, q)
+    e = np.hypot(*(xy - _truth(q)).T)
+    assert np.median(e) < 25.0 and e[-1] < 40.0
+    on_road = np.minimum(np.abs(xy[:, 0] - np.round(xy[:, 0] / 100) * 100), np.abs(xy[:, 1] - np.round(xy[:, 1] / 100) * 100))
+    assert on_road.max() < 1e-6                      # every output point lies on a grid road (a path, not a mean)

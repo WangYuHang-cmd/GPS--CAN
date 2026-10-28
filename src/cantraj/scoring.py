@@ -41,6 +41,19 @@ def score_episode(ep: Episode, pred: pd.DataFrame, dd=None, in_gap=None, topk=Fa
         out.update({f"topk_{k}": v for k, v in best.items() if k in ("ade", "fde", "c25", "c50", "c100", "end_within_100")})
         out["topk_K"] = len(errs)
         out["topk_pick"] = int(kbest)
+        # candidate diagnostics (ICDE RQ4), candidates in rank order (candidate_id 0 = Top-1):
+        #   topK_ade = whole-path oracle among the first K; topK_cov100 = per-second union coverage (any of the first K
+        #   within 100 m at that second; NOT a single admissible path)
+        E = np.where(np.isfinite(np.array(errs)), np.array(errs), np.inf)
+        for K in (1, 3, 5, 10):
+            sub = E[:K]
+            ade_k = np.where(np.isfinite(sub), sub, np.nan)
+            m_k = np.nanmean(ade_k, axis=1) if np.isfinite(sub).any() else np.full(len(sub), np.nan)
+            out[f"top{K}_ade"] = float(np.nanmin(m_k)) if np.isfinite(m_k).any() else np.nan
+            out[f"top{K}_cov100"] = float(np.mean(np.min(sub, axis=0) <= 100.0))
+        ranks = np.argsort(np.where(np.isnan(np.nanmean(np.where(np.isfinite(E), E, np.nan), axis=1)), np.inf,
+                                    np.nanmean(np.where(np.isfinite(E), E, np.nan), axis=1)), kind="stable")
+        out["best_rank"] = int(ranks[0]) + 1
     out.update(episode_id=ep.episode_id, driver=ep.driver, drive=ep.drive, parent=f"{ep.driver}/{ep.drive}",
                win=ep.win, k=ep.k, dur_s=ep.t_end - ep.t0, **{k: v for k, v in ep.meta.items() if not isinstance(v, (list, dict))})
     return out

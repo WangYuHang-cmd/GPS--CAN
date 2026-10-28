@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 PY="nice -n 10 ionice -c2 -n7 ${PYTHON:-python3} -B"
 LOG=${CANTRAJ_LOGS:-logs}/can2gps_finalize_metrics.log
 M=manifests/episode_manifest_v1.parquet
-S=/data/backup/DriveDNA-GPS_bench/scores/full_v1
+S=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/scores/full_v1
 echo "=== rescoring start $(date)" | tee -a $LOG
 $PY scripts/score.py --run full_v1 --manifest $M --eligible-only --workers ${WORKERS:-5} 2>&1 | grep --line-buffered -vE "Warning|cKDTree" | tee -a $LOG
 echo "=== seed-0 map fill start $(date)" | tee -a $LOG

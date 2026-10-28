@@ -11,18 +11,26 @@ absolute paths and the Controlled-supplement city; any hit aborts the export.
 from __future__ import annotations
 
 import argparse
+import codecs
 import os
 import re
 import shutil
 import sys
 
 GPS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CITY = codecs.decode("Gnzcn", "rot13")   # the Controlled supplement's city; kept out of every released text, this one included
 INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", "README.md", "LICENSE", "requirements.txt",
-           "ENVIRONMENT.md", "reports/full_v1_summary.md", "reports/failure_analysis_v1.md", "reports/paper"]
+           "ENVIRONMENT.md", "reports/full_v1_summary.md", "reports/failure_analysis_v1.md", "reports/paper",
+           # ICDE study: method reproduction notes, input provenance and aggregate tables only (no per-episode or
+           # per-tile files: the tile list shows the driven regions and stays with the gated data)
+           "reports/icde/methods_repro.md", "reports/icde/input_provenance.md", "reports/icde/tables/main_board.md",
+           "reports/icde/tables/main_board.csv", "reports/icde/tables/pairs.csv", "reports/icde/tables/methods.csv",
+           "reports/icde/tables/sig_signal_use.csv", "reports/icde/ep_tie_sensitivity.csv", "reports/icde/ep_val_selection.csv",
+           "reports/icde/opd2_author_samples.csv", "reports/icde/macrotracking_author_sample.csv"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
-                 "tile_pilot_maps.py", "make_pilot_report.py", "run_pilot.sh"}
+                 "tile_pilot_maps.py", "make_pilot_report.py", "run_pilot.sh", "stop_chain2_before_full.sh"}
 TEXT_EXT = {".py", ".md", ".txt", ".yaml", ".yml", ".csv", ".ini", ".cfg", ".toml", ".json", ".sh"}
 DATA_EXT = {".csv", ".json", ".md", ".txt"}
 OPENPILOT = "$OPENPILOT_DIR"
@@ -30,7 +38,7 @@ GATE = [
     ("dongle id (16 hex)", re.compile(r"(?<![0-9a-zA-Z.])(?=[0-9]*[a-f])[0-9a-f]{16}(?![0-9a-zA-Z])")),   # hex with a letter: not a float
     ("route timestamp", re.compile(r"\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}")),
     ("local path", re.compile(r"/home/[a-z]+/|/data/datasets/raw|hf_staging_video|_local/videos")),
-    ("controlled city", re.compile(r"\bTampa\b")),
+    ("controlled city", re.compile(re.escape(CITY))),              # any occurrence, also inside a regex literal
     ("coordinate column", re.compile(r"\blat0\b|\blon0\b|\blatitude\b.*,.*\blongitude\b")),   # data and documents only
 ]
 GATE_ALLOW = {  # files where a pattern is expected and harmless (sha256 prefixes in the spec look like hex ids)
@@ -51,8 +59,9 @@ def transform(rel, txt):
     txt = txt.replace(f"PYTHONPATH={OPENPILOT} ", "").replace(f"PYTHONPATH={OPENPILOT}:", "PYTHONPATH=")
     txt = txt.replace(f"{OPENPILOT}/.venv/bin/python", "${PYTHON:-python3}" if ext == ".sh" else "python")
     txt = txt.replace(OPENPILOT, "$OPENPILOT_DIR")
-    txt = re.sub(r"\bTampa\b", "the Controlled-supplement city", txt)
+    txt = txt.replace(CITY, "the Controlled-supplement city")
     if ext == ".sh":
+        txt = txt.replace("/data/backup/DriveDNA-GPS_bench", "${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}")
         txt = txt.replace("/home/henry/Desktop/Drive/DriveDNA/experiments/logs", "${CANTRAJ_LOGS:-logs}")
         txt = txt.replace("cd /home/henry/Desktop/Drive/DriveDNA/GPS", 'cd "$(dirname "$0")/.."')
         txt = txt.replace("--out /home/henry/Desktop/Drive/GPS--CAN", "--out ${RELEASE_DIR:-../GPS--CAN}")

@@ -9,7 +9,7 @@ PY="nice -n 10 ionice -c2 -n7 ${PYTHON:-python3} -B"
 export PYTHONPATH=$OPENPILOT_DIR
 M=manifests/episode_manifest_v1.parquet
 LOG=${CANTRAJ_LOGS:-logs}/can2gps_learned.log
-MODELS=/data/backup/DriveDNA-GPS_bench/models/learn
+MODELS=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn
 MODE=${MODE:-train}; KINDS=${KINDS:-"resid_nogru resid gru"}; SEEDS=${SEEDS:-"0 1 2"}
 WORKERS=${EVAL_WORKERS:-4}   # replay workers hold ~2 GB each (native tables); keep 4 while map runs are active
 case $MODE in

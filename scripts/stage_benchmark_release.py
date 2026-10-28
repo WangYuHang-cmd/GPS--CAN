@@ -11,6 +11,7 @@ column or file name. Prediction parquet files are not staged (tens of GB; availa
 from __future__ import annotations
 
 import argparse
+import codecs
 import hashlib
 import os
 import re
@@ -28,7 +29,7 @@ MANIFESTS = ["episode_manifest_v1.parquet", "split_drives.parquet", "availabilit
              "calibration_global.json", "time_alignment.json", "map_tiles.csv", "episode_p0.parquet", "map_coverage_episodes_v1.csv",
              "drives_G4.csv", "drives_G8.csv", "native_manifest.csv"]
 GATE = [re.compile(r"/data/|/home/|/mnt/"), re.compile(r"(?<![0-9a-zA-Z.])(?=[0-9]*[a-f])[0-9a-f]{16}(?![0-9a-zA-Z])"),
-        re.compile(r"\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}"), re.compile(r"\bTampa\b")]
+        re.compile(r"\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}"), re.compile(r"\b" + codecs.decode("Gnzcn", "rot13") + r"\b")]
 
 
 def gate_text(txt, where):

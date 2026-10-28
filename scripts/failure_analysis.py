@@ -27,6 +27,7 @@ from cantraj import metrics as M, paths  # noqa: E402
 
 GPS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TILES = os.path.join(paths.BENCH, "maps", "tiles")
+TAG = "v1"
 TILE_DEG = 0.25
 RADIUS_M = 2000.0
 MAIN = ("test", "few_shot_heldout")
@@ -81,7 +82,7 @@ class TileTrees:
 
 
 def density_table(man):
-    out_p = os.path.join(paths.MANIFESTS, "episode_density_v1.parquet")
+    out_p = os.path.join(paths.MANIFESTS, f"episode_density_{TAG}.parquet")
     need = man[man.fold.isin(MAIN + ("val",)) & man.win.isin(["w05", "w15", "full"])]
     if os.path.exists(out_p):
         d = pd.read_parquet(out_p)
@@ -140,8 +141,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="full_v1")
     ap.add_argument("--n-boot", type=int, default=300)
+    ap.add_argument("--tiles-dir", default=None, help="map tiles for the density strata (default: v1 tiles; ICDE: maps/tiles_v2)")
+    ap.add_argument("--tag", default="v1", help="output suffix: manifests/episode_density_<tag>.parquet, reports/failure_analysis_<tag>.md, tables T7*_<tag> (v1 keeps the old names)")
+    ap.add_argument("--events", default=None, help="failure_events.parquet from scripts/paper_curves.py (default: the v1 paper figure data)")
     args = ap.parse_args()
-    tdir = os.path.join(GPS_DIR, "reports", "paper", "tables")
+    global TILES, TAG
+    TAG = args.tag
+    if args.tiles_dir:
+        TILES = args.tiles_dir
+    tdir = os.path.join(GPS_DIR, "reports", "paper", "tables") if TAG == "v1" else os.path.join(GPS_DIR, "reports", "icde", "tables")
+    sfx = "" if TAG == "v1" else f"_{TAG}"
     os.makedirs(tdir, exist_ok=True)
 
     man = pd.read_parquet(os.path.join(paths.MANIFESTS, "episode_manifest_v1.parquet"),
@@ -161,14 +170,14 @@ def main():
     labels = [f"low (< {q1:.0f}/km2)", f"mid ({q1:.0f} to {q2:.0f}/km2)", f"high (> {q2:.0f}/km2)"]
     ep["density"] = pd.cut(ep.nodes_per_km2, [-np.inf, q1, q2, np.inf], labels=labels).astype(object)
     tb = stratum_rows(ep, METHODS_B, "density", ["w05", "w15"], args.n_boot, levels=labels)
-    tb.to_csv(os.path.join(tdir, "T7b_density_strata.csv"), index=False)
+    tb.to_csv(os.path.join(tdir, f"T7b_density_strata{sfx}.csv"), index=False)
 
     # ---- (c) platform seen / unseen
     tc = stratum_rows(ep, METHODS_C, "platform_seen", ["w05"], args.n_boot, levels=["seen in train", "unseen"])
-    tc.to_csv(os.path.join(tdir, "T7c_platform_strata.csv"), index=False)
+    tc.to_csv(os.path.join(tdir, f"T7c_platform_strata{sfx}.csv"), index=False)
 
     # ---- (a) lost-road timing
-    fe_p = os.path.join(GPS_DIR, "reports", "paper", "figures", "data", "failure_events.parquet")
+    fe_p = args.events or os.path.join(GPS_DIR, "reports", "paper", "figures", "data", "failure_events.parquet")
     ta = pd.DataFrame()
     if os.path.exists(fe_p):
         fe = pd.read_parquet(fe_p)
@@ -187,7 +196,7 @@ def main():
                              turns_median_lost=float(lost.n_turns.median()) if len(lost) else np.nan,
                              turns_median_kept=float(g[~g.lost].n_turns.median()) if (~g.lost).any() else np.nan))
         ta = pd.DataFrame(rows)
-        ta.to_csv(os.path.join(tdir, "T7a_lost_road_timing.csv"), index=False)
+        ta.to_csv(os.path.join(tdir, f"T7a_lost_road_timing{sfx}.csv"), index=False)
 
     # ---- markdown
     out = ["# Failure analysis and research strata (benchmark v1, run %s)\n" % args.run,
@@ -210,11 +219,11 @@ def main():
            md(tc, ["fold", "protocol", "method", "win", "level", "n_episodes", "n_drivers", "n_platforms", "ade_median", "ade_median_lo", "ade_median_hi", "c100", "s50_90"], 2)]
     for name, df_, cols_ in (("T7a_lost_road_timing", ta, None), ("T7b_density_strata", tb, None), ("T7c_platform_strata", tc, None)):
         if not df_.empty:
-            with open(os.path.join(tdir, name + ".md"), "w") as f:
+            with open(os.path.join(tdir, name + sfx + ".md"), "w") as f:
                 f.write(md(df_, list(df_.columns), 2))
-    with open(os.path.join(GPS_DIR, "reports", "failure_analysis_v1.md"), "w") as f:
+    with open(os.path.join(GPS_DIR, "reports", f"failure_analysis_{TAG}.md"), "w") as f:
         f.write("\n".join(out))
-    print("wrote reports/failure_analysis_v1.md and T7a/T7b/T7c; rows:", len(ta), len(tb), len(tc))
+    print(f"wrote reports/failure_analysis_{TAG}.md and T7a/T7b/T7c{sfx}; rows:", len(ta), len(tb), len(tc))
 
 
 if __name__ == "__main__":

@@ -61,3 +61,30 @@ class LearnedDR(OnlineBaseline, OfflineBaseline):
             cands, probs = rotations(xy, self.K)
             return xy, th, cands, probs
         return xy, th, None, None
+
+
+class SigDR(LearnedDR):
+    """Signal-combination study, no map: dead reckoning with a signal-set model's signed heading rate and speed scale
+    (learn/sig.py); reads only that set's signals."""
+
+    def __init__(self, model_dir, theta_fallback=0.0, K_headings=36):
+        from ..learn.sig import SigProvider
+        self.provider = SigProvider(model_dir)
+        self.name = self.provider.name
+        self.needs = self.provider.needs
+        self.theta_fallback = theta_fallback
+        self.K = K_headings
+
+    def warmup(self, events):
+        return None
+
+    def observe(self, events):
+        if len(events) == 0:
+            return
+        for n in self.needs:
+            if n not in events.cols:
+                from ..registry import ForbiddenSignalError
+                raise ForbiddenSignalError(f"{self.name} needs {n!r}, not in inputs {events.names()}")
+        cols = [events.cols[n] for n in self.needs]
+        for i, t in enumerate(events.t_s):
+            self.provider.ingest(float(t), {n: float(c[i]) for n, c in zip(self.needs, cols)})

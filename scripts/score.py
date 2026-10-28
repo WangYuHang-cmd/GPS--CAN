@@ -27,7 +27,7 @@ import pyarrow.parquet as pq
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 from cantraj import io, metrics as M, paths, registry, scoring  # noqa: E402
-from cantraj.episodes import DriveData  # noqa: E402
+from cantraj.episodes import DriveData, truncate  # noqa: E402
 
 
 def drive_key(episode_id: str) -> str:
@@ -76,13 +76,15 @@ class LightEpisode:
 
 
 def _worker(task):
-    shard_i, drives, groups, man_path, eligible_only, layer, time_comp, run, parts_dir = task
+    shard_i, drives, groups, man_path, eligible_only, layer, time_comp, run, parts_dir, prefix_s, ep_ids = task
     t_start = time.time()
     man = pd.read_parquet(man_path)
     if eligible_only:
         man = man[man.eligible_main]
     man = man.assign(key=man.driver + "/" + man.drive)
     man = man[man.key.isin(drives)]
+    if ep_ids is not None:
+        man = man[man.episode_id.isin(ep_ids)]
     allowed = set(man.episode_id)
     gman = io.load_manifest().set_index(["driver", "drive"])
     dd_by, eps_by = {}, {}
@@ -94,7 +96,7 @@ def _worker(task):
         delta = io.time_compensation(r["gps_sources"], r["gps_rate_hz"]) if time_comp == "train" else 0.0
         dd = DriveData(driver, drive, delta_s=delta, input_layer=layer, light=True)
         wins = man[man.key == key].win.unique()
-        eps_by[key] = {e.episode_id: LightEpisode(e) for w in wins for e in dd.episodes(w)}
+        eps_by[key] = {e.episode_id: LightEpisode(truncate(e, prefix_s) if prefix_s else e) for w in wins for e in dd.episodes(w)}
         dd.ref = dd.ref1 = None            # scoring needs only the episodes' own reference arrays and the speed grid
         dd.grid = dd.grid[["time_s", "vEgo"]].reset_index(drop=True)
         dd_by[key] = dd
@@ -136,10 +138,19 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--resume", action="store_true", help="reuse part files newer than their prediction files")
     ap.add_argument("--methods", nargs="*", default=None, help="only score these method stems (default: all found)")
+    ap.add_argument("--folds", nargs="*", default=None, help="only score episodes of these folds (manifest column `fold`)")
+    ap.add_argument("--episodes-file", default=None, help="CSV with an episode_id column: score only these episodes")
+    ap.add_argument("--prefix-s", type=float, default=None, help="same-cohort horizon study: score only the first N seconds of every episode")
     args = ap.parse_args()
     man = pd.read_parquet(args.manifest)
     if args.eligible_only:
         man = man[man.eligible_main]
+    if args.folds:
+        man = man[man.fold.isin(args.folds)]
+    ep_ids = None
+    if args.episodes_file:
+        ep_ids = set(pd.read_csv(args.episodes_file).episode_id)
+        man = man[man.episode_id.isin(ep_ids)]
     files = sorted(glob.glob(os.path.join(paths.PREDS, args.run, "*", "*.parquet")))
     if not files:
         raise SystemExit("no prediction files")
@@ -174,7 +185,7 @@ def main():
     for k, drives in enumerate(shards):
         todo = [(g, fl) for g, fl in sorted(groups.items()) if not (args.resume and fresh(g[0], g[1], k))]
         if todo and drives:
-            tasks.append((k, drives, todo, args.manifest, args.eligible_only, args.layer, args.time_comp, args.run, parts_dir))
+            tasks.append((k, drives, todo, args.manifest, args.eligible_only, args.layer, args.time_comp, args.run, parts_dir, args.prefix_s, ep_ids))
     print(f"{len(groups)} prediction groups, {len(man_keys)} drives, {W} shards, {len(tasks)} shard tasks to run", flush=True)
     t0 = time.time()
     if tasks:

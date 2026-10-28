@@ -115,8 +115,17 @@ def episode_summary(err, t_rel=None, s_can=None, moving=None, in_gap=None, radii
     out["max"] = float(np.nanmax(err)) if fin.any() else np.nan
     e_miss = np.where(fin, err, np.inf)
     out["fde_gt_500"] = bool(np.isfinite(out["fde"]) and out["fde"] > 500.0) if fin.any() else True
-    tail = e_miss[-max(1, n // 5):]                      # lost_road: the final fifth of the episode stays beyond 100 m
-    out["lost_road"] = bool(np.all(tail > 100.0))
+    tail = e_miss[-max(1, n // 5):]                      # tail_lost100: the final fifth of the episode stays beyond 100 m
+    out["tail_lost100"] = bool(np.all(tail > 100.0))
+    out["lost_road"] = out["tail_lost100"]               # the v1 name of the same flag (v1 tables)
+    beyond = e_miss > 100.0                              # terminal_lost100: the episode ENDS beyond 100 m (missing = beyond);
+    out["terminal_lost100"] = bool(beyond[-1])           # its onset is the first point after the last return inside 100 m
+    if beyond[-1]:
+        inside = np.flatnonzero(~beyond)
+        i_on = int(inside[-1] + 1) if len(inside) else 0
+        out["lost_onset_s"] = float(t_rel[i_on]) if t_rel is not None else float(i_on)
+    else:
+        out["lost_onset_s"] = np.nan
     for r in radii:
         out[f"c{int(r)}"] = float(np.mean(e_miss <= r))
     for r, q in success:

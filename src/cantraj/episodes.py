@@ -204,3 +204,11 @@ class DriveData:
 
 def ref_times(ep: Episode):
     return ep.ref["time_s"].to_numpy(dtype=float)
+
+
+def truncate(ep: Episode, seconds: float) -> Episode:
+    """Same-cohort horizon study: the episode cut to its first `seconds` (same start, same id). The visible map follows
+    the shorter duration (radius rule) and offline methods see only the prefix's events."""
+    import dataclasses
+    t_end = min(ep.t_end, ep.t0 + float(seconds))
+    return dataclasses.replace(ep, t_end=t_end, ref=ep.ref[ep.ref["time_s"] <= t_end].reset_index(drop=True))

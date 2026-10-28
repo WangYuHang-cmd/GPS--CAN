@@ -16,6 +16,37 @@ import pyarrow.parquet as pq
 from scipy.spatial import cKDTree
 
 from ..geo import LocalFrame
+from .osm import TILE_DEG
+
+
+def tile_key(ti, tj):
+    """Integer key of 0.25 degree tile indices (vectorised)."""
+    return (np.asarray(ti, dtype=np.int64) + 4096) * 16384 + (np.asarray(tj, dtype=np.int64) + 8192)
+
+
+def parse_maxspeed(s):
+    """OSM maxspeed tag -> m/s (NaN when missing or symbolic): '50' km/h, '35 mph', '50 km/h', '60;80' (first)."""
+    if not isinstance(s, str) or not s:
+        return np.nan
+    t = s.split(";")[0].strip().lower()
+    num = ""
+    for ch in t:
+        if ch.isdigit() or ch == ".":
+            num += ch
+        elif num:
+            break
+    if not num:
+        return np.nan
+    v = float(num)
+    return v * 0.44704 if "mph" in t else v / 3.6
+
+
+def parse_lanes(s):
+    try:
+        v = float(str(s).split(";")[0])
+        return v if 0 < v < 20 else np.nan
+    except (TypeError, ValueError):
+        return np.nan
 
 
 class _Out:
@@ -52,8 +83,10 @@ class DriveGraph:
         node_ids = nodes.node_id.values.astype(np.int64)
         order = np.argsort(node_ids, kind="stable")
         node_ids_sorted = node_ids[order]
-        x, y = frame.to_enu(nodes.lat.values[order], nodes.lon.values[order])
+        lat_s, lon_s = nodes.lat.values[order], nodes.lon.values[order]
+        x, y = frame.to_enu(lat_s, lon_s)
         self.node_xy = np.column_stack([x, y]).astype(np.float64)
+        self.node_tkey = tile_key(np.floor(lat_s / TILE_DEG), np.floor(lon_s / TILE_DEG))     # tile of every node (episode visibility)
         self.node_id = node_ids_sorted
         n_nodes = len(node_ids_sorted)
         wn = way_nodes.sort_values(["way_id", "seq"], kind="stable")
@@ -69,11 +102,16 @@ class DriveGraph:
         wmeta = ways.drop_duplicates("way_id").set_index("way_id")
         ow = wmeta["oneway"].reindex(w).fillna(0).to_numpy(dtype=int)
         hw = wmeta["highway"].reindex(w).fillna("road").to_numpy()
+        ms = (wmeta["maxspeed"].map(parse_maxspeed) if "maxspeed" in wmeta else pd.Series(np.nan, index=wmeta.index)).reindex(w).to_numpy(dtype=float)
+        ln = (wmeta["lanes"].map(parse_lanes) if "lanes" in wmeta else pd.Series(np.nan, index=wmeta.index)).reindex(w).to_numpy(dtype=float)
         fwd, bwd = ow >= 0, ow <= 0
         self.u = np.concatenate([a[fwd], b[bwd]]).astype(np.int64)
         self.v = np.concatenate([b[fwd], a[bwd]]).astype(np.int64)
         self.way_id = np.concatenate([w[fwd], w[bwd]]).astype(np.int64)
         self.highway = np.concatenate([hw[fwd], hw[bwd]])
+        self.maxspeed = np.concatenate([ms[fwd], ms[bwd]])          # m/s, NaN when untagged (Elastic Pathing)
+        self.lanes = np.concatenate([ln[fwd], ln[bwd]])              # total lanes of the way, NaN when untagged
+        self.oneway = np.concatenate([ow[fwd], ow[bwd]]) != 0
         d = self.node_xy[self.v] - self.node_xy[self.u]
         self.length = np.hypot(d[:, 0], d[:, 1])
         self.bearing = np.arctan2(d[:, 1], d[:, 0])
@@ -213,14 +251,42 @@ def build_graph_tiles(tile_dir, tiles, frame):
 
 
 class EpisodeGraphView:
-    """A DriveGraph built in a drive-level frame, viewed from an episode frame: queries given in episode ENU are
-    converted exactly (through WGS-84) into the graph frame and returned positions are converted back. Edge bearings,
-    lengths, successors and highway classes are shared (the frames differ by well under a degree)."""
+    """A DriveGraph built in a drive-level frame (one graph per drive and window class, the union of the episodes' discs),
+    viewed from one episode: queries given in episode ENU are converted exactly (through WGS-84) into the graph frame and
+    returned positions are converted back. Benchmark v1.1:
+    - visibility: with `visible_tiles` (the episode's own tile set, tiles_in_radius(p0, min(r(D), cap))) only edges with at
+      least one end node inside those tiles exist for the episode (`nearest_edges`, `succ`); other episodes' discs of the
+      same drive are never visible, whatever the cache holds;
+    - bearings are re-expressed in the episode frame: the two azimuthal frames differ by the meridian convergence between
+      their origins (several degrees for episodes far from a long drive's centroid), measured once at the episode origin.
+    Edge lengths, successors and highway classes are shared (length distortion < 0.1% within 500 km)."""
 
-    def __init__(self, graph: DriveGraph, episode_frame: LocalFrame):
+    def __init__(self, graph: DriveGraph, episode_frame: LocalFrame, visible_tiles=None):
         self.g = graph
         self.ef = episode_frame
         self.frame = episode_frame
+        lat0, lon0 = episode_frame.to_lla(0.0, 0.0)
+        latn, lonn = episode_frame.to_lla(0.0, 100.0)
+        gx0, gy0 = graph.frame.to_enu(lat0, lon0)
+        gxn, gyn = graph.frame.to_enu(latn, lonn)
+        self.rot = float(math.atan2(float(gyn) - float(gy0), float(gxn) - float(gx0)) - math.pi / 2)   # episode north seen in the graph frame
+        self.bearing = (graph.bearing - self.rot + math.pi) % (2 * math.pi) - math.pi
+        if visible_tiles is not None:
+            vt = list(visible_tiles)
+            keys = tile_key([t[0] for t in vt], [t[1] for t in vt])
+            nv = np.isin(graph.node_tkey, keys)
+            self.visible = nv[graph.u] | nv[graph.v]
+        else:
+            self.visible = None
+
+    def n_visible(self):
+        return int(self.visible.sum()) if self.visible is not None else self.g.n_edges()
+
+    def succ(self, e):
+        res = self.g.succ(e)                                   # turn angles are bearing differences: frame-invariant
+        if self.visible is None:
+            return res
+        return [s for s in res if self.visible[s[0]]]
 
     def __getattr__(self, name):
         return getattr(self.g, name)
@@ -238,7 +304,10 @@ class EpisodeGraphView:
 
     def nearest_edges(self, x, y, radius_m):
         gx, gy = self._to_graph(x, y)
-        return self.g.nearest_edges(gx, gy, radius_m)
+        es = self.g.nearest_edges(gx, gy, radius_m)
+        if self.visible is None:
+            return es
+        return [e for e in es if self.visible[e]]
 
     def project(self, e, x, y):
         gx, gy = self._to_graph(x, y)

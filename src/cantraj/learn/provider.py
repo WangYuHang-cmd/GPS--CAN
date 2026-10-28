@@ -81,7 +81,8 @@ class MotionProvider:
         v, s = (self.ev_v, self.ev_s) if np.isfinite(self.ev_t) else (0.0, 0.0)
         pv = v if self.prev_v is None else self.prev_v
         ps = s if self.prev_s is None else self.prev_s
-        f = features(v, s, age, missing, pv, ps, self.static, 0.01)[0] if np.ndim(features(v, s, age, missing, pv, ps, self.static, 0.01)) == 2 else features(v, s, age, missing, pv, ps, self.static, 0.01)
+        f = features(v, s, age, missing, pv, ps, self.static, 0.01)
+        f = f[0] if np.ndim(f) == 2 else f
         f = np.asarray(f, dtype=np.float32).reshape(-1)
         fs = (f - self.mean) / self.std
         gate = f[7] * (1.0 - f[6])
@@ -155,6 +156,11 @@ class MotionProvider:
 
     def sync(self, t_ref):
         self._commit_until(t_ref, inclusive=True)
+
+    def rates(self):
+        """(heading rate, speed scale) of the last committed tick; the scale includes the residual model's c_p exactly as
+        this provider's own integrator applies it (used by the map particle filter as its motion source)."""
+        return self.om, (self.scale if self.kind == "gru" else self.scale * self.c_p)
 
     def pose_at(self, t_ref):
         """Pose extrapolated from the last committed tick with the held speed and heading rate (non-mutating)."""
