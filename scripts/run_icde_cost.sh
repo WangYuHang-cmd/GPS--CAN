@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ICDE cost study (RQ5): every method on the same fixed validation subset (manifests/icde_cost_episodes.csv, w05 + w15),
+# ICDE cost study (RQ5): every method on the same fixed validation subset (manifests/icde_cost_episodes_valhalla.csv:
+# the episodes of manifests/icde_cost_episodes.csv whose disc lies inside the OPD-II Valhalla clusters, w05 + w15),
 # ONE worker, peak memory from /usr/bin/time -v, per-episode inference seconds from the runner's timing files
 # (run icde_cost). Budget points for the two search methods: PF with 500 particles, beam width 50.
 # Run when the machine is otherwise quiet; do not edit while it runs.
@@ -9,12 +10,13 @@ PY=${PYTHON:-${PYTHON:-python3}3}
 LOG=${CANTRAJ_LOGS:-${CANTRAJ_LOGS:-logs}}/icde_cost
 mkdir -p "$LOG"
 M=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn
-BASE="--run icde_cost --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds val --wins w05 w15 --episodes-file manifests/icde_cost_episodes.csv --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --workers 1 --flush-min 0"
+BASE="--run icde_cost --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds val --wins w05 w15 --episodes-file manifests/icde_cost_episodes_valhalla.csv --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --workers 1 --flush-min 0"
 run() {
   tag=$1; shift
   echo "$(date '+%F %T') START $tag"
   /usr/bin/time -v "$PY" scripts/run_baseline.py "$@" $BASE > "$LOG/$tag.out" 2> "$LOG/$tag.time"
-  echo "$(date '+%F %T') END $tag rc=$?"
+  rc=$?
+  echo "$(date '+%F %T') END $tag rc=$rc"
 }
 run dr_steer --baselines dr_steer --group G3 --protocols O-N-Hp
 run dr_none --baselines dr_none --group G1 --protocols O-N-Hp
@@ -28,5 +30,6 @@ run map_beam_none --baselines map_beam_none --group G1 --protocols F-M-Hp
 run macrotracking --baselines macrotracking --group G3 --protocols O-M-Hp
 run opd2 --baselines opd2 --group G3 --protocols F-M-Hp
 run elastic_pathing_hp --baselines elastic_pathing_hp --group G1 --protocols F-M-Hp
+run elastic_pathing --baselines elastic_pathing --group G1 --protocols F-M-Hm
 run map_pf_learned --baseline map_pf_learned --ckpt "$M/gru/seed0" --tag map_pf_learned_gru_s0 --group G3 --protocols O-M-Hp
 echo "$(date '+%F %T') CHAIN DONE"

@@ -12,6 +12,7 @@ CIs; the driver-equal median summarises each driver first. Every number in the p
 import argparse
 import glob
 import os
+import re
 import sys
 
 import numpy as np
@@ -37,13 +38,17 @@ MAIN = [
     ("dr_off", "dr_steer_offonline__G3", "O-N-Hp", "steering DR, online offset", "no map, online", "G3", False),
     ("dr_cal", "dr_steer_calib__G3", "O-N-Hp", "steering DR, train calibrated", "no map, online", "G3", False),
     ("gru", ["learned_gru_s0__G3", "learned_gru_s1__G3", "learned_gru_s2__G3"], "O-N-Hp", "learned GRU (3 seeds)", "no map, online", "G3", False),
+    ("resid", ["learned_resid_s0__G3", "learned_resid_s1__G3", "learned_resid_s2__G3"], "O-N-Hp", "learned physics residual (3 seeds)", "no map, online", "G3", False),
     ("pf_none", "map_pf_none__G1", "O-M-Hp", "map PF, speed only", "map, online", "G1", False),
     ("pf", "map_pf_steer__G3", "O-M-Hp", "map PF, steering", "map, online", "G3", False),
+    ("pf_gru", ["map_pf_learned_gru_s0__G3", "map_pf_learned_gru_s1__G3", "map_pf_learned_gru_s2__G3"], "O-M-Hp", "map PF, learned GRU motion (3 seeds)", "map, online", "G3", False),
+    ("pf_resid", ["map_pf_learned_resid_s0__G3", "map_pf_learned_resid_s1__G3", "map_pf_learned_resid_s2__G3"], "O-M-Hp", "map PF, learned residual motion (3 seeds)", "map, online", "G3", False),
     ("macro", "macrotracking__G3", "O-M-Hp", "MacroTracking", "map, online", "G3", True),
     ("macro_cal", "macrotracking_calib__G3", "O-M-Hp", "MacroTracking, train calibrated", "map, online", "G3", True),
     ("opd2_on", "opd2_online__G3", "O-M-Hp", "OPD-II, online read-out", "map, online", "G3", True),
     ("beam_none", "map_beam_none__G1", "F-M-Hp", "map beam, speed only", "map, offline", "G1", False),
     ("beam", "map_beam_steer__G3", "F-M-Hp", "map beam, steering", "map, offline", "G3", False),
+    ("lineage", "map_pf_steer_lineage__G3", "F-M-Hp", "map PF, steering, best-lineage read-out", "map, offline", "G3", False),
     ("ep_hp", "elastic_pathing_hp__G1", "F-M-Hp", "Elastic Pathing (start heading used)", "map, offline", "G1", True),
     ("opd2", "opd2__G3", "F-M-Hp", "OPD-II (3 s delayed)", "map, offline", "G3", True),
     ("pf_hm", "map_pf_steer__G3", "O-M-Hm", "map PF, steering", "map, heading unknown", "G3", False),
@@ -145,6 +150,12 @@ def main():
         print(t.round(1).to_string()); print(gt.round(1).to_string())
     if "pairs" in args.extras:
         print(pair_table(ep, man).round(3).to_string())
+    if "cohort" in args.extras:
+        print(cohort_table().round(1).to_string())
+    if "cost" in args.extras:
+        print(cost_table().round(3).to_string())
+    if "robust" in args.extras:
+        print(robust_table(ep, man).round(2).to_string())
     rows = []
     for win in args.wins:
         for key, stem, proto, label, fam, req, hp in MAIN:
@@ -273,16 +284,24 @@ def topk_table(ep, man, n_boot=300):
                 continue
             g = got.reindex(exp.episode_id)
             drv = exp.driver.to_numpy()
-            row = dict(stem=stem, protocol=proto, fold=fold, n_expected=len(exp), n_output=int(g.ade.notna().sum()))
+            out = g.ade.notna().to_numpy()
+            # an output without a candidate set (a single path) is its own top-K: K = 1, rank 1
+            single = out & (g.topk_K.isna().to_numpy() if "topk_K" in g.columns else np.ones(len(g), dtype=bool))
+            row = dict(stem=stem, protocol=proto, fold=fold, n_expected=len(exp), n_output=int(out.sum()), n_single_path=int(single.sum()))
             for K in (1, 3, 5, 10):
                 col = f"top{K}_ade"
-                v = g[col].to_numpy(dtype=float) if col in g.columns else g.ade.to_numpy(dtype=float)
+                v = g[col].to_numpy(dtype=float) if col in g.columns else np.full(len(g), np.nan)
+                v = np.where(single, g.ade.to_numpy(dtype=float), v)
                 row[f"top{K}_ade_median"], _ = stats.median_inf(np.where(np.isnan(v), np.inf, v), drv, n_boot)
-                cv = g[f"top{K}_cov100"].to_numpy(dtype=float) if f"top{K}_cov100" in g.columns else g.c100.to_numpy(dtype=float)
+                cv = g[f"top{K}_cov100"].to_numpy(dtype=float) if f"top{K}_cov100" in g.columns else np.full(len(g), np.nan)
+                cv = np.where(single, g.c100.to_numpy(dtype=float), cv)
                 row[f"top{K}_cov100"] = float(np.nan_to_num(cv, nan=0.0).mean())
             br = g.best_rank.to_numpy(dtype=float) if "best_rank" in g.columns else np.full(len(g), np.nan)
-            row["best_rank_is_1"] = float(np.nanmean(br == 1)) if np.isfinite(br).any() else np.nan
-            row["n_candidates_median"] = float(g.topk_K.median()) if "topk_K" in g.columns else np.nan
+            br = np.where(single, 1.0, br)
+            row["best_rank_is_1"] = float(np.mean(br[out] == 1)) if out.any() else np.nan
+            kk = g.topk_K.to_numpy(dtype=float) if "topk_K" in g.columns else np.full(len(g), np.nan)
+            kk = np.where(single, 1.0, kk)
+            row["n_candidates_median"] = float(np.nanmedian(kk[out])) if out.any() else np.nan
             rows.append(row)
     t = pd.DataFrame(rows)
     t.to_csv(os.path.join(OUT, "topk_w05.csv"), index=False)
@@ -296,7 +315,14 @@ PAIRS = [
     ("map gain, steering, heading unknown", ("map_pf_steer__G3", "O-M-Hm", "G3", False), ("dr_steer__G3", "O-N-Hm", "G3", False)),
     ("start heading, map PF steering", ("map_pf_steer__G3", "O-M-Hp", "G3", False), ("map_pf_steer__G3", "O-M-Hm", "G3", False)),
     ("offline beam vs online PF, steering", ("map_beam_steer__G3", "F-M-Hp", "G3", False), ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
+    ("decode output: PF lineage vs PF weighted mean", ("map_pf_steer_lineage__G3", "F-M-Hp", "G3", False), ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
+    ("decode output: beam vs PF lineage", ("map_beam_steer__G3", "F-M-Hp", "G3", False), ("map_pf_steer_lineage__G3", "F-M-Hp", "G3", False)),
     ("start heading, map beam steering", ("map_beam_steer__G3", "F-M-Hp", "G3", False), ("map_beam_steer__G3", "F-M-Hm", "G3", False)),
+    ("steering value, map PF, heading known", ("map_pf_steer__G3", "O-M-Hp", "G3", False), ("map_pf_none__G1", "O-M-Hp", "G1", False)),
+    ("steering value, map PF, heading unknown", ("map_pf_steer__G3", "O-M-Hm", "G3", False), ("map_pf_none__G1", "O-M-Hm", "G1", False)),
+    ("steering value, map beam, heading known", ("map_beam_steer__G3", "F-M-Hp", "G3", False), ("map_beam_none__G1", "F-M-Hp", "G1", False)),
+    ("steering value, map beam, heading unknown", ("map_beam_steer__G3", "F-M-Hm", "G3", False), ("map_beam_none__G1", "F-M-Hm", "G1", False)),
+    ("Elastic Pathing vs map beam, speed only, heading unknown", ("elastic_pathing__G1", "F-M-Hm", "G1", False), ("map_beam_none__G1", "F-M-Hm", "G1", False)),
     ("Elastic Pathing, start heading used vs not", ("elastic_pathing_hp__G1", "F-M-Hp", "G1", True), ("elastic_pathing__G1", "F-M-Hm", "G1", False)),
     ("MacroTracking vs map PF, steering, online", ("macrotracking__G3", "O-M-Hp", "G3", True), ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
     ("OPD-II (3 s delayed) vs map PF, steering", ("opd2__G3", "F-M-Hp", "G3", True), ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
@@ -305,6 +331,14 @@ PAIRS = [
     ("MacroTracking calibrated vs as released", ("macrotracking_calib__G3", "O-M-Hp", "G3", True), ("macrotracking__G3", "O-M-Hp", "G3", True)),
     ("learned GRU vs nominal DR, no map", (["learned_gru_s0__G3", "learned_gru_s1__G3", "learned_gru_s2__G3"], "O-N-Hp", "G3", False),
      ("dr_steer__G3", "O-N-Hp", "G3", False)),
+    ("learned residual vs nominal DR, no map", (["learned_resid_s0__G3", "learned_resid_s1__G3", "learned_resid_s2__G3"], "O-N-Hp", "G3", False),
+     ("dr_steer__G3", "O-N-Hp", "G3", False)),
+    ("learned GRU motion in map PF vs nominal steering", (["map_pf_learned_gru_s0__G3", "map_pf_learned_gru_s1__G3", "map_pf_learned_gru_s2__G3"], "O-M-Hp", "G3", False),
+     ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
+    ("learned residual motion in map PF vs nominal steering", (["map_pf_learned_resid_s0__G3", "map_pf_learned_resid_s1__G3", "map_pf_learned_resid_s2__G3"], "O-M-Hp", "G3", False),
+     ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
+    ("CAN yaw rate vs steering, no map", ("dr_can_yaw__G4", "O-N-Hp", "G4", False), ("dr_steer__G3", "O-N-Hp", "G3", False)),
+    ("device gyro vs steering, no map", ("dr_imu_yaw_rls__G8", "O-N-Hp", "G8", False), ("dr_steer__G3", "O-N-Hp", "G3", False)),
     ("Elastic Pathing (speed) vs hold start", ("elastic_pathing__G1", "F-M-Hm", "G1", False), ("p0_hold__G1", "O-N-Hp", "G1", False)),
     ("Elastic Pathing (speed) vs map PF steering, heading unknown", ("elastic_pathing__G1", "F-M-Hm", "G1", False),
      ("map_pf_steer__G3", "O-M-Hm", "G3", False)),
@@ -352,6 +386,139 @@ def pair_table(ep, man, wins=("w05", "w15"), n_boot=1000):
     return t
 
 
+COHORT_SOURCES = {60: ["icde_cohort_online_p060", "icde_cohort_p060"], 300: ["icde_cohort_online_p300", "icde_cohort_p300"],
+                  900: ["icde_cohort_online_p900", "icde_v11"]}
+
+
+def cohort_table(n_boot=500):
+    """RQ3: the same cohort (one 15-minute start per drive, manifests/cohort_v11.csv) scored at 60 / 300 / 900 s. Online
+    methods come from their w15 files scored with --prefix-s; offline ones from their prefix reruns (and w15 at 900 s).
+    Every cohort episode a method should answer counts; missing outputs are failures (+inf)."""
+    coh = pd.read_csv(os.path.join(paths.MANIFESTS, "cohort_v11.csv"))
+    coh = coh[coh.cohort]
+    rows = []
+    for P, runs in COHORT_SOURCES.items():
+        for run in runs:
+            f = os.path.join(paths.SCORES, run, "episodes_all.parquet")
+            if not os.path.exists(f):
+                continue
+            e = pd.read_parquet(f, columns=["episode_id", "method", "protocol", "ade", "route_ok"])
+            e = e[e.episode_id.isin(set(coh.episode_id))]
+            for (meth, proto), g in e.groupby(["method", "protocol"]):
+                g = g.drop_duplicates("episode_id").set_index("episode_id")
+                for fold in FOLDS:
+                    c = coh[coh.fold == fold]
+                    a = g.ade.reindex(c.episode_id).to_numpy(dtype=float)
+                    a = np.where(np.isnan(a), np.inf, a)
+                    if np.isinf(a).all():
+                        continue
+                    med, (lo, hi) = stats.median_inf(a, c.driver.to_numpy(), n_boot)
+                    deq, _, nd = stats.driver_equal(a, c.driver.to_numpy(), n_boot=n_boot)
+                    rows.append(dict(method=meth, protocol=proto, fold=fold, horizon_s=P, source=run, n=len(a), n_output=int(np.isfinite(a).sum()),
+                                     n_drivers=nd, ade_median=med, ade_lo=lo, ade_hi=hi, ade_driver_median=deq,
+                                     route_ok=float(g.route_ok.reindex(c.episode_id).fillna(0).astype(float).mean())))
+    t = pd.DataFrame(rows)
+    t.to_csv(os.path.join(OUT, "cohort_horizon.csv"), index=False)
+    # paired differences on the cohort episodes at every horizon (offline runs: prefix reruns; 900 s: the w15 runs)
+    prs = []
+    runs = {60: ["icde_cohort_p060", "icde_cohort_online_p060"], 300: ["icde_cohort_p300", "icde_cohort_online_p300"], 900: ["icde_v11"]}
+    for P, rr in runs.items():
+        e = pd.concat([pd.read_parquet(os.path.join(paths.SCORES, r, "episodes_all.parquet"), columns=["episode_id", "method", "protocol", "ade"])
+                       for r in rr if os.path.exists(os.path.join(paths.SCORES, r, "episodes_all.parquet"))])
+        for name, (sa, pa), (sb, pb) in COHORT_PAIRS:
+            for fold in FOLDS:
+                c = coh[coh.fold == fold]
+
+                def ade(stem, proto):
+                    g = e[(e.method == stem) & (e.protocol == proto)].drop_duplicates("episode_id").set_index("episode_id").ade
+                    v = g.reindex(c.episode_id).to_numpy(dtype=float)
+                    return np.where(np.isnan(v), np.inf, v)
+                a, b = ade(sa, pa), ade(sb, pb)
+                if np.isinf(a).all() or np.isinf(b).all():
+                    continue
+                r = stats.paired(a, b, c.driver.to_numpy(), n_boot)
+                prs.append(dict(comparison=name, horizon_s=P, fold=fold, **r))
+    pd.DataFrame(prs).to_csv(os.path.join(OUT, "cohort_pairs.csv"), index=False)
+    return t
+
+
+ROBUST = [("dr_steer__G3", "steering DR"), ("dr_none__G1", "straight line")]
+PERTURB = [("pq1", "speed quantised to 1 m/s"), ("pn05", "speed noise 0.5 m/s"), ("s1hz", "steering at 1 Hz")]
+
+
+def robust_table(ep, man, n_boot=1000):
+    """RQ5: degraded inputs (v1 probes, no map, unchanged in v1.1) against the clean signal, paired, w05 O-N-Hp."""
+    rows = []
+    for stem, label in ROBUST:
+        base = stem.split("__")[0]
+        for tag, what in PERTURB:
+            pert = f"{base}_{tag}__G3"
+            if not ((ep.method == pert) & (ep.protocol == "O-N-Hp")).any():
+                continue
+            for fold in FOLDS:
+                exp = expected(man, "w05", fold, "O-N-Hp", "G3", False)
+                ids, drv = exp.episode_id.to_numpy(), exp.driver.to_numpy()
+
+                def ade(st):
+                    g = ep[(ep.method == st) & (ep.protocol == "O-N-Hp")].drop_duplicates("episode_id").set_index("episode_id").ade
+                    v = g.reindex(ids).to_numpy(dtype=float)
+                    return np.where(np.isnan(v), np.inf, v)
+                a, b = ade(pert), ade(stem)
+                r = stats.paired(a, b, drv, n_boot)
+                rows.append(dict(method=label, perturbation=what, tag=tag, fold=fold, median_clean=float(np.median(b)),
+                                 median_perturbed=float(np.median(a)), **r))
+    t = pd.DataFrame(rows)
+    t.to_csv(os.path.join(OUT, "robustness_w05.csv"), index=False)
+    return t
+
+
+COST_LOG = paths.LOGS
+
+
+def cost_table():
+    """RQ5: run icde_cost (scripts/run_icde_cost.sh: one worker, the same 92 validation episodes for every method).
+    Per-episode inference seconds from the runner's timing files (graph build and drive loading listed separately),
+    peak resident memory and wall time of the whole run from /usr/bin/time -v."""
+    rows = []
+    for tf in sorted(glob.glob(os.path.join(COST_LOG, "icde_cost", "*.time"))):
+        tag = os.path.basename(tf)[:-5]
+        txt = open(tf).read()
+        rss = re.search(r"Maximum resident set size \(kbytes\): (\d+)", txt)
+        wall = re.search(r"Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): ([\d:.]+)", txt)
+        secs = np.nan
+        if wall:
+            parts = [float(x) for x in wall.group(1).split(":")]
+            secs = sum(v * 60 ** k for k, v in enumerate(reversed(parts)))
+        timing = glob.glob(os.path.join(paths.PREDS, "icde_cost", "*", "*.timing.csv"))
+        out = open(os.path.join(COST_LOG, "icde_cost", tag + ".out")).read() if os.path.exists(os.path.join(COST_LOG, "icde_cost", tag + ".out")) else ""
+        stem = re.search(r"-> \S+/([^/]+)\.part0\.parquet", out)
+        t = pd.DataFrame()
+        if stem:
+            f = [x for x in timing if os.path.basename(x).startswith(stem.group(1) + ".part")]
+            if f:
+                t = pd.read_csv(f[0])
+        row = dict(tag=tag, peak_rss_gb=int(rss.group(1)) / 1048576 if rss else np.nan, wall_s=secs)
+        if len(t):
+            e = t[~t.protocol.str.startswith("_")].copy()
+            e["win"] = e.key.str.split("/").str[2]
+            for win, g in e.groupby("win"):
+                row[f"n_{win}"] = len(g)
+                row[f"infer_median_s_{win}"] = float(g.secs.median())
+                row[f"infer_p90_s_{win}"] = float(g.secs.quantile(0.9))
+            gr = t[t.protocol == "_graph"].secs
+            row["graph_build_median_s"] = float(gr.median()) if len(gr) else np.nan
+            row["drive_load_median_s"] = float(t[t.protocol == "_load"].secs.median())
+        rows.append(row)
+    c = pd.DataFrame(rows)
+    c.to_csv(os.path.join(OUT, "cost.csv"), index=False)
+    return c
+
+
+COHORT_PAIRS = [("beam vs PF lineage", ("map_beam_steer__G3", "F-M-Hp"), ("map_pf_steer_lineage__G3", "F-M-Hp")),
+                ("beam vs PF", ("map_beam_steer__G3", "F-M-Hp"), ("map_pf_steer__G3", "O-M-Hp")),
+                ("PF lineage vs PF", ("map_pf_steer_lineage__G3", "F-M-Hp"), ("map_pf_steer__G3", "O-M-Hp"))]
+
+
 SIG_GROUPS = ["S1", "S2c", "S3", "S4c", "S2b", "S4b"]
 SIG_PAIRS = [("S2c", "S1", "pedals | speed"), ("S3", "S1", "steering | speed"), ("S4c", "S3", "pedals | speed+steering"),
              ("S4c", "S2c", "steering | speed+pedals"), ("S2b", "S1", "pressed flags | speed"), ("S4b", "S3", "pressed flags | speed+steering")]
@@ -385,7 +552,26 @@ def signal_tables(ep, man, n_boot=500):
     t, gt = pd.DataFrame(rows), pd.DataFrame(gains)
     t.to_csv(os.path.join(OUT, "signal_sets_w05.csv"), index=False)
     gt.to_csv(os.path.join(OUT, "signal_gains_w05.csv"), index=False)
+    # the benchmark's map methods on the same pedal-valid windows (map protocol expected set), for scale
+    exp = pd.concat([expected(man, "w05", f, "O-M-Hp", "pedal", False) for f in FOLDS])
+    drv = exp.driver.to_numpy()
+    ref = []
+    for key, stem, proto in SIG_REFERENCE:
+        got = ep[(ep.method == stem) & (ep.protocol == proto)].drop_duplicates("episode_id").set_index("episode_id")
+        if not len(got):
+            continue
+        a = got.ade.reindex(exp.episode_id).to_numpy(dtype=float)
+        a = np.where(np.isnan(a), np.inf, a)
+        med, (lo, hi) = stats.median_inf(a, drv, n_boot)
+        ref.append(dict(key=key, stem=stem, protocol=proto, n=len(a), fail=int(np.isinf(a).sum()), ade_median=med, lo=lo, hi=hi))
+    pd.DataFrame(ref).to_csv(os.path.join(OUT, "signal_reference_w05.csv"), index=False)
     return t, gt
+
+
+SIG_REFERENCE = [("pf", "map_pf_steer__G3", "O-M-Hp"), ("beam", "map_beam_steer__G3", "F-M-Hp"), ("opd2", "opd2__G3", "F-M-Hp"),
+                 ("macro", "macrotracking__G3", "O-M-Hp"), ("pf_none", "map_pf_none__G1", "O-M-Hp"), ("beam_none", "map_beam_none__G1", "F-M-Hp"),
+                 ("ep", "elastic_pathing__G1", "F-M-Hm"), ("ep_hp", "elastic_pathing_hp__G1", "F-M-Hp"),
+                 ("ct", "can_trace__G2", "F-M-Hm"), ("ct_area", "can_trace_area__G2", "F-M-Hm")]
 
 
 if __name__ == "__main__":

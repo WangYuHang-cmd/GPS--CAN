@@ -24,9 +24,14 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
            # ICDE study: method reproduction notes, input provenance and aggregate tables only (no per-episode or
            # per-tile files: the tile list shows the driven regions and stays with the gated data)
            "reports/icde/methods_repro.md", "reports/icde/input_provenance.md", "reports/icde/tables/main_board.md",
-           "reports/icde/tables/main_board.csv", "reports/icde/tables/pairs.csv", "reports/icde/tables/methods.csv",
+           "reports/icde/tables/main_board.csv", "reports/icde/tables/methods.csv",
            "reports/icde/tables/sig_signal_use.csv", "reports/icde/ep_tie_sensitivity.csv", "reports/icde/ep_val_selection.csv",
-           "reports/icde/opd2_author_samples.csv", "reports/icde/macrotracking_author_sample.csv"]
+           "reports/icde/opd2_author_samples.csv", "reports/icde/macrotracking_author_sample.csv",
+           "reports/icde/tables/pairs.csv", "reports/icde/tables/topk_w05.csv", "reports/icde/tables/signal_sets_w05.csv",
+           "reports/icde/tables/signal_gains_w05.csv", "reports/icde/tables/signal_reference_w05.csv",
+           "reports/icde/tables/cohort_horizon.csv", "reports/icde/tables/cohort_pairs.csv", "reports/icde/tables/cost.csv",
+           "reports/icde/tables/cost_accuracy.csv", "reports/icde/tables/map_prep_cost.csv", "reports/icde/tables/robustness_w05.csv",
+           "reports/icde/tables/a3_visibility.csv"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
@@ -137,7 +142,7 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     if args.clean:
         for name in os.listdir(args.out):
-            if name == ".git":
+            if name in (".git", ".gitignore"):
                 continue
             p = os.path.join(args.out, name)
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)

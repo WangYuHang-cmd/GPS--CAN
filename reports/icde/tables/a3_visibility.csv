@@ -1,0 +1,7 @@
+method,protocol,comparison,win,n,share_abs_diff_lt_1m,median_diff,median_lo,median_hi,mean_diff,mean_lo,mean_hi
+map_beam_steer__G3,F-M-Hp,union vs own tiles,w05,494,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+map_beam_steer__G3,F-M-Hp,union vs own tiles,w15,157,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+map_pf_steer__G3,O-M-Hp,union vs own tiles,w05,494,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+map_pf_steer__G3,O-M-Hp,union vs own tiles,w15,157,1.0,0.0,0.0,0.0,0.0,0.0,0.0
+map_pf_steer__G3,O-M-Hp,seed 1 vs seed 0 (own tiles),w05,494,0.8076923076923077,-0.13284178344156672,-0.16459847950752504,-0.07655301323217856,-5.311177492304547,-10.584479637896868,-2.330362859132627
+map_pf_steer__G3,O-M-Hp,seed 1 vs seed 0 (own tiles),w15,157,0.6369426751592356,-0.08186584759152993,-0.18401748910901006,0.1684476826219452,42.5885695119143,-120.18361304572097,158.75012922167465

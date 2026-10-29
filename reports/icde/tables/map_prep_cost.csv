@@ -1,0 +1,4 @@
+step,unit,seconds,source,size_gb
+re-cut road tiles (map v2) from the OSM extracts,"5,111 tiles",2768.0,experiments/logs/icde_recut_tiles_v2.log (last line),3.3
+Valhalla tiles for OPD-II: road network export,44 clusters,613.0,"manifests/valhalla_v2_clusters.json (pbf_s, summed)",
+Valhalla tiles for OPD-II: graph build,44 clusters,2051.4,"manifests/valhalla_v2_clusters.json (build_s, summed)",3.4
