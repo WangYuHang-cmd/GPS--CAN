@@ -11,8 +11,10 @@ LOG=${CANTRAJ_LOGS:-${CANTRAJ_LOGS:-logs}}/icde_cost
 mkdir -p "$LOG"
 M=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn
 BASE="--run icde_cost --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds val --wins w05 w15 --episodes-file manifests/icde_cost_episodes_valhalla.csv --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --workers 1 --flush-min 0"
+ONLY=${ONLY:-}                     # optional space-separated tags to run (default: every method)
 run() {
   tag=$1; shift
+  if [ -n "$ONLY" ] && [[ " $ONLY " != *" $tag "* ]]; then return; fi
   echo "$(date '+%F %T') START $tag"
   /usr/bin/time -v "$PY" scripts/run_baseline.py "$@" $BASE > "$LOG/$tag.out" 2> "$LOG/$tag.time"
   rc=$?
@@ -32,4 +34,9 @@ run opd2 --baselines opd2 --group G3 --protocols F-M-Hp
 run elastic_pathing_hp --baselines elastic_pathing_hp --group G1 --protocols F-M-Hp
 run elastic_pathing --baselines elastic_pathing --group G1 --protocols F-M-Hm
 run map_pf_learned --baseline map_pf_learned --ckpt "$M/gru/seed0" --tag map_pf_learned_gru_s0 --group G3 --protocols O-M-Hp
+run dewri_hp --baselines dewri_hp --group G1 --protocols F-M-Hp
+run dewri --baselines dewri --group G1 --protocols F-M-Hm
+run spy_hp --baselines spy_hp --group G3 --protocols F-M-Hp
+run spy --baselines spy --group G3 --protocols F-M-Hm
+run spy_area --baselines spy_area --group G3 --protocols F-M-Hm
 echo "$(date '+%F %T') CHAIN DONE"

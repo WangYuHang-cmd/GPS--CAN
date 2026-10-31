@@ -19,7 +19,9 @@ ROWS = [
     ("MacroTracking~\\cite{gazdag2023privacy}", "re-impl.", "speed, steering", "$p_0, \\theta_0$", "OSM", "online", "-- / calib.$^a$", "position"),
     ("OPD-II~\\cite{bianchi2025opd}", "re-impl.", "speed, steering", "$p_0, \\theta_0$", "OSM (Meili)", "delayed $\\le$3\\,s$^b$", "-- / calib.$^a$", "position"),
     ("Elastic Pathing~\\cite{gao2017elastic}", "re-impl.", "speed (1\\,Hz)", "$p_0$ (+$\\theta_0$)$^c$", "OSM", "offline", "val (2 values)", "top-$n$ paths"),
-    ("CAN-Trace~\\cite{lin2025cantrace}", "re-impl.", "speed, accel.\\ pedal", "area or $p_0$$^c$", "OSM", "offline", "--", "top-10 paths"),
+    ("CAN-Trace~\\cite{lin2025cantrace}", "re-impl.", "speed, accel.\\ pedal", "area / $p_0$$^c$", "OSM", "offline", "--", "top-10 paths"),
+    ("Dewri et al.~\\cite{dewri2013inferring}", "re-impl.", "speed (1\\,Hz)", "$p_0$ (+$\\theta_0$)$^c$", "OSM", "offline", "--", "top-10 paths"),
+    ("SPy~\\cite{pese2020spy}", "re-impl.", "steering", "area / $p_0$ (+$\\theta_0$)$^c$", "OSM", "offline", "val (2 values)", "path"),
     ("Signal-set GRU (S1--S4)", "study", "per set", "$p_0, \\theta_0$", "-- / OSM", "online", "train GPS", "position"),
     ("Curvature DR (class F)", "reference", "speed, localizer curv.", "$p_0, \\theta_0$", "-- / OSM", "online", "GPS-informed$^d$", "position"),
 ]
@@ -30,7 +32,7 @@ def main():
     t = pd.DataFrame(ROWS, columns=cols)
     os.makedirs(os.path.join(paths.GPS_DIR, "reports", "icde", "tables"), exist_ok=True)
     t.to_csv(os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "methods.csv"), index=False)
-    lines = [r"\begin{table*}[t]\centering\small\setlength{\tabcolsep}{4pt}", r"\caption{Methods and the information they use. $p_0$: start position, "
+    lines = [r"\begin{table*}[t]\centering\small\setlength{\tabcolsep}{3pt}", r"\caption{Methods and the information they use. $p_0$: start position, "
              r"$\theta_0$: start heading. Online methods answer each query from the signals up to that time.}\label{tab:methods}",
              r"\begin{tabular}{llllllll}\toprule", " & ".join(r"\textbf{" + c + "}" for c in cols) + r" \\\midrule"]
     for r in ROWS:

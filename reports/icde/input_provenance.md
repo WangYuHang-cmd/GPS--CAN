@@ -31,7 +31,9 @@ applied to the REFERENCE before scoring and is the same for all methods.
 | OPD-II (`opd2`) | speed, steering (C0) | p0, theta0 | yes (Valhalla on the same network) | delayed online, <= 3 s | `_calib`: train-fold calibration | final output of the released tool |
 | OPD-II online (`opd2_online`) | speed, steering (C0) | p0, theta0 | yes | online | no | matched points only once matched |
 | Elastic Pathing (`elastic_pathing`) | speed (C0), 1 Hz means | p0 | yes | offline | no | heading unused (native); `_hp` uses theta0 |
-| CAN-Trace (`can_trace`, pending) | speed, accelerator pedal (C0) | area (variant: p0) | yes | offline | no | pedal-valid drives only |
+| CAN-Trace (`can_trace`, `can_trace_area`) | speed, accelerator pedal (C0) | area (variant: p0) | yes | offline | no | pedal-valid drives only |
+| Dewri et al. (`dewri`, `dewri_hp`) | speed (C0), 1 Hz means on CAN time | p0 (`_hp`: + theta0 start filter) | yes | offline | no | no value tuned; top-10 paths ranked by the paper's speed model |
+| SPy / RoCuMa (`spy_area`, `spy`, `spy_hp`) | steering only (C0; speed whitelisted under G3 but never read, tested) | area: 5 km square placed with p0 (native); `spy`: p0; `spy_hp`: p0 + theta0 | yes | offline | no | two open values chosen on val; positions from the method's own DTW alignment (extension) |
 
 Causality tests in the suite: whitelist (`tests/test_whitelist.py`), raw-event causality (`test_causality_raw.py`),
 suffix perturbation for the map PF (`test_map_pf.py`), the GRU wrapper (`test_learn.py`), MacroTracking

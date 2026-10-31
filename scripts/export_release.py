@@ -31,7 +31,7 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
            "reports/icde/tables/signal_gains_w05.csv", "reports/icde/tables/signal_reference_w05.csv",
            "reports/icde/tables/cohort_horizon.csv", "reports/icde/tables/cohort_pairs.csv", "reports/icde/tables/cost.csv",
            "reports/icde/tables/cost_accuracy.csv", "reports/icde/tables/map_prep_cost.csv", "reports/icde/tables/robustness_w05.csv",
-           "reports/icde/tables/a3_visibility.csv"]
+           "reports/icde/tables/a3_visibility.csv", "reports/icde/tables/spy_dewri_diag.csv", "reports/icde/spy_val_selection.csv"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
@@ -94,7 +94,7 @@ def iter_files():
         for root, dirs, files in os.walk(src):
             dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
             for f in files:
-                if f in EXCLUDE_FILES or f.endswith((".pyc", ".pyo")):
+                if f in EXCLUDE_FILES or f.endswith((".pyc", ".pyo", ".so")):              # .so: the DTW kernel is built on first use
                     continue
                 yield os.path.relpath(os.path.join(root, f), GPS_DIR)
 

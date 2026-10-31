@@ -33,6 +33,13 @@ def main():
     m["NKm"] = n(full.path_len_m.sum() / 1000.0)
     m["NDrivesQcom"] = n((dr.gps_source == "qcomdiag").sum())
     m["NDrivesUblox"] = n(dr.gps_source.astype(str).str.contains("ublox").sum())
+    ho = dr[dr.fold.isin(["test", "few_shot_heldout"])]
+    m["NHeldoutDrives"], m["NHeldoutDrivers"] = n(len(ho)), n(ho.driver.nunique())
+    m["NHeldoutPlatforms"] = n(ho.platform.nunique())
+    tv = dr[dr.fold.isin(["train", "val"])]
+    m["NTrainValDrives"], m["NTrainValDrivers"] = n(len(tv)), n(tv.driver.nunique())
+    ua = dr[~dr.fold.isin(["train", "val", "test", "few_shot_heldout"])]
+    m["NUnassignedDrives"], m["NUnassignedDrivers"] = n(len(ua)), n(ua.driver.nunique())
     for fold, tag in (("test", "Test"), ("few_shot_heldout", "FewShot"), ("val", "Val")):
         for win, wt in (("w01", "One"), ("w05", "Five"), ("w15", "Fifteen"), ("full", "Full")):
             s = e[(e.fold == fold) & (e.win == win)]
@@ -103,13 +110,14 @@ def main():
     ch = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "cohort_horizon.csv")
     if os.path.exists(ch):                     # Coh<method><proto><One|Five|Fifteen><Fold>Med; online 900 s from the online run
         t = pd.read_csv(ch)
-        t = t[~((t.horizon_s == 900) & (t.source == "icde_v11") & t.protocol.str.startswith("O-"))]
+        t = t[~((t.horizon_s == 900) & (t.source == "icde_v11") & t.protocol.str.startswith("O-") & ~t.method.str.contains("wrapfix"))]
         for r in t.to_dict("records"):
             if r["fold"] not in FOLD_TAG or r["horizon_s"] not in (60, 300, 900):
                 continue
             h = {60: "One", 300: "Five", 900: "Fifteen"}[r["horizon_s"]]
             k = f"Coh{camel(r['method'].split('__')[0])}{r['protocol'].replace('-', '')}{h}{FOLD_TAG[r['fold']]}"
             m[k + "Med"] = m_or_fail(r["ade_median"])
+            m[k + "Fail"] = n(r["n"] - r["n_output"])
         cp = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "cohort_pairs.csv")
         if os.path.exists(cp):                 # CohPair<BeamVsLineage|BeamVsPf|LineageVsPf><One|Five|Fifteen><Fold><stat>
             names = {"beam vs PF lineage": "BeamVsLineage", "beam vs PF": "BeamVsPf", "PF lineage vs PF": "LineageVsPf"}
@@ -136,11 +144,17 @@ def main():
             m[k + "SinceTurn"] = f"{r['since_last_turn_median_s']:.0f}"
     fb = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "T7b_density_strata_v11.csv")
     if os.path.exists(fb):                     # Dens<method><Low|Mid|High>Med (w05, main folds) and the tertile cuts
-        t = pd.read_csv(fb)
-        t = t[(t.win == "w05") & (t.fold == "main")]
+        t_all = pd.read_csv(fb)
+        t = t_all[(t_all.win == "w05") & (t_all.fold == "main")]
         for r in t.to_dict("records"):
             lvl = r["level"].split(" ")[0].capitalize()
-            m[f"Dens{camel(r['method'].split('__')[0])}{lvl}Med"] = m_or_fail(r["ade_median"])
+            k = f"Dens{camel(r['method'].split('__')[0])}{lvl}"
+            m[k + "Med"] = m_or_fail(r["ade_median"])
+            m[k + "LostPct"] = f"{100 * r['lost_road']:.0f}"
+        for r in t_all[(t_all.win == "w15") & (t_all.fold == "main")].to_dict("records"):
+            lvl = r["level"].split(" ")[0].capitalize()
+            m[f"Dens{camel(r['method'].split('__')[0])}{lvl}MedFifteen"] = m_or_fail(r["ade_median"])
+        m["DensNFive"] = n(t[t.method == "map_pf_steer__G3"].n_episodes.min())
         cuts = sorted({int(x) for lv in t.level.unique() for x in __import__("re").findall(r"(\d+)/km2", lv)})
         if len(cuts) == 2:
             m["DensCutLow"], m["DensCutHigh"] = n(cuts[0]), n(cuts[1])
@@ -165,6 +179,19 @@ def main():
         m["CtDiagTraceNodesMed"] = n(f.trace_nodes.median())
         m["CtDiagIntersectionsMed"] = n(f.intersections_passed.median())
         m["CtDiagShareFewer"] = f"{100 * f.fewer_edges_than_intersections.mean():.0f}"
+    sd = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "spy_dewri_diag.csv")
+    if os.path.exists(sd):                     # scripts/icde_spy_dewri_diag.py
+        t = pd.read_csv(sd, keep_default_na=False)
+        bins = {"0-1": "ZeroOne", "2-3": "TwoThree", "4-6": "FourSix", "7+": "SevenPlus"}
+        for r in t.to_dict("records"):
+            s = camel(r["stem"].split("__")[0].replace("map_beam_steer", "beam").replace("elastic_pathing", "ep"))
+            if r["kind"] == "same_output" and r["fold"] in FOLD_TAG:
+                m[f"Diag{s}EpSame{WIN_TAG[r['win']]}{FOLD_TAG[r['fold']]}"] = f"{100 * float(r['value']):.0f}"
+            elif r["kind"] == "route_by_turns":
+                m[f"DiagTurnRoute{s}{bins[r['bin']]}"] = f"{100 * float(r['value']):.0f}"
+                m[f"DiagTurnN{bins[r['bin']]}"] = n(r["n"])
+            elif r["kind"].startswith("lowturn_"):
+                m[f"DiagLowTurn{'Recall' if 'recall' in r['kind'] else 'Prec'}{s}"] = f"{float(r['value']):.2f}"
     coh = os.path.join(paths.MANIFESTS, "cohort_v11.csv")
     if os.path.exists(coh):
         c = pd.read_csv(coh)
@@ -181,6 +208,9 @@ def main():
 WIN_TAG = {"w01": "One", "w05": "Five", "w15": "Fifteen", "full": "Full"}
 FOLD_TAG = {"test": "Test", "few_shot_heldout": "FewShot"}
 PAIR_TAG = {"map gain, steering, heading known": "MapGain", "map gain, steering, heading unknown": "MapGainHm",
+            "Dewri vs Elastic Pathing, speed only, heading unknown": "DewriVsEp",
+            "Dewri vs Elastic Pathing, start heading used": "DewriVsEpHp",
+            "SPy (steering only) vs map beam steering, start known": "SpyVsBeam", "SPy, known start vs 5 km area": "SpyKnownVsArea",
             "start heading, map PF steering": "HeadPf", "start heading, map beam steering": "HeadBeam",
             "offline beam vs online PF, steering": "BeamVsPf", "learned GRU vs nominal DR, no map": "GruVsDr",
             "Elastic Pathing (speed) vs hold start": "EpVsHold", "Elastic Pathing (speed) vs map PF steering, heading unknown": "EpVsPfHm",
@@ -194,7 +224,8 @@ PAIR_TAG = {"map gain, steering, heading known": "MapGain", "map gain, steering,
             "steering value, map beam, heading known": "SteerBeam", "steering value, map beam, heading unknown": "SteerBeamHm",
             "Elastic Pathing vs map beam, speed only, heading unknown": "EpVsBeamNoneHm",
             "OPD-II (3 s delayed) vs map PF, steering": "OpdVsPf", "OPD-II vs MacroTracking": "OpdVsMacro",
-            "OPD-II calibrated vs as released": "OpdCalVsOpd", "MacroTracking calibrated vs as released": "MacroCalVsMacro"}
+            "OPD-II calibrated vs as released": "OpdCalVsOpd", "MacroTracking wrap-fixed vs as released": "MacroFix",
+            "OPD-II wrap-fixed vs as released": "OpdFix", "MacroTracking calibrated vs as released": "MacroCalVsMacro"}
 
 
 DIGITS = dict(zip("0123456789", ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]))
@@ -213,7 +244,7 @@ def m_or_fail(x):
 def signed(x):
     """Signed difference for running text: one decimal below 100 m, typographic minus."""
     body = f"{abs(x):.1f}" if abs(x) < 100 else n(abs(x))
-    return ("$-$" if x < 0 else "") + body
+    return ("$-$" if x < 0 and body.strip("0.{,}") else "") + body      # no sign on a value that rounds to zero
 
 
 def results_macros(m):
@@ -233,6 +264,10 @@ def results_macros(m):
             m[k + "Fail"] = n(r["n_fail"])
             m[k + "N"] = n(r["n_expected"])
             m[k + "Out"] = n(r["n_output"])
+            m[k + "Drivers"] = n(r["n_drivers"])
+            sd = r.get("ade_median_seed_sd")
+            if sd is not None and np.isfinite(sd):
+                m[k + "SeedSd"] = n(sd)
     p = os.path.join(tabs, "pairs.csv")
     if os.path.exists(p):
         for r in pd.read_csv(p).to_dict("records"):
@@ -245,8 +280,15 @@ def results_macros(m):
                     m[k + stat] = signed(r[col])
             m[k + "WinA"] = f"{100 * r['win_a_with_fail']:.0f}"
             m[k + "N"] = n(r["n_common"])
+            m[k + "NOut"] = n(r["n"])
             if np.isfinite(r.get("n_drivers", np.nan)):
                 m[k + "Drivers"] = n(r["n_drivers"])
+            if np.isfinite(r.get("n_seeds", np.nan)):
+                m[k + "Seeds"] = n(r["n_seeds"])
+                m[k + "SeedsSig"] = n(r["n_seeds_sig"])
+            sd = r.get("median_diff_seed_sd")
+            if sd is not None and np.isfinite(sd):
+                m[k + "SeedSd"] = f"{sd:.1f}" if sd < 100 else n(sd)
 
 
 def cost_macros(m):
@@ -322,6 +364,8 @@ def sig_macros(m):
             m[k + "Win"] = f"{100 * d.win_a.mean():.0f}"
             m[k + "WinMin"] = f"{100 * d.win_a.min():.0f}"
             m[k + "WinMax"] = f"{100 * d.win_a.max():.0f}"
+            if len(d) == 1:
+                m[k + "Lo"], m[k + "Hi"] = signed(d.median_lo.iloc[0]), signed(d.median_hi.iloc[0])
         m["SigNDrivers"] = n(t.n_drivers.iloc[0])
     p = os.path.join(tabs, "signal_reference_w05.csv")
     if os.path.exists(p):

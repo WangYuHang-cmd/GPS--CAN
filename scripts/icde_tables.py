@@ -51,6 +51,8 @@ MAIN = [
     ("lineage", "map_pf_steer_lineage__G3", "F-M-Hp", "map PF, steering, best-lineage read-out", "map, offline", "G3", False),
     ("ep_hp", "elastic_pathing_hp__G1", "F-M-Hp", "Elastic Pathing (start heading used)", "map, offline", "G1", True),
     ("opd2", "opd2__G3", "F-M-Hp", "OPD-II (3 s delayed)", "map, offline", "G3", True),
+    ("dewri_hp", "dewri_hp__G1", "F-M-Hp", "Dewri et al. (start heading used)", "map, offline", "G1", True),
+    ("spy_hp", "spy_hp__G3", "F-M-Hp", "SPy, start known (start heading used)", "map, offline", "G3", True),
     ("pf_hm", "map_pf_steer__G3", "O-M-Hm", "map PF, steering", "map, heading unknown", "G3", False),
     ("pf_none_hm", "map_pf_none__G1", "O-M-Hm", "map PF, speed only", "map, heading unknown", "G1", False),
     ("beam_hm", "map_beam_steer__G3", "F-M-Hm", "map beam, steering", "map, heading unknown", "G3", False),
@@ -58,6 +60,9 @@ MAIN = [
     ("ep", "elastic_pathing__G1", "F-M-Hm", "Elastic Pathing", "map, heading unknown", "G1", False),
     ("ct", "can_trace__G2", "F-M-Hm", "CAN-Trace (pedal subset), start known", "map, heading unknown", "pedal", False),
     ("ct_area", "can_trace_area__G2", "F-M-Hm", "CAN-Trace (pedal subset), 5 km area", "map, heading unknown", "pedal", False),
+    ("dewri", "dewri__G1", "F-M-Hm", "Dewri et al.", "map, heading unknown", "G1", False),
+    ("spy", "spy__G3", "F-M-Hm", "SPy, start known", "map, heading unknown", "G3", False),
+    ("spy_area", "spy_area__G3", "F-M-Hm", "SPy, 5 km area", "map, heading unknown", "G3", False),
     ("curv", "dr_curvature__G5", "O-N-Hp", "curvature DR (class F, not CAN-only)", "reference", "G5", False),
     ("pf_curv", "map_pf_curvature__G5", "O-M-Hp", "map PF, curvature (class F)", "reference", "G5", False),
 ]
@@ -135,7 +140,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="icde_v11")
     ap.add_argument("--n-boot", type=int, default=1000)
-    ap.add_argument("--wins", nargs="+", default=["w05"])
+    ap.add_argument("--wins", nargs="+", default=["w05", "w15", "full"], help="main board windows (rewritten every run: keep all three)")
     ap.add_argument("--extras", nargs="*", default=[], help="also build: a3 topk signal pairs")
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
@@ -154,6 +159,7 @@ def main():
         print(cohort_table().round(1).to_string())
     if "cost" in args.extras:
         print(cost_table().round(3).to_string())
+        print(cost_accuracy_table().round(2).to_string())
     if "robust" in args.extras:
         print(robust_table(ep, man).round(2).to_string())
     rows = []
@@ -208,11 +214,13 @@ def main_rows(t):
              "|" + "---|" * 12]
     tex = [r"\begin{table*}[t]\centering\footnotesize\setlength{\tabcolsep}{2.5pt}", r"\caption{Five-minute windows, test and few-shot drivers (benchmark v1.1). Median ADE in metres with "
            r"95\% CI from a driver-resampling bootstrap; drv-eq: median of per-driver medians; c100: share of seconds within 100\,m; "
-           r"route: path recall at 50\,m $\ge 0.8$; fail: expected episodes without output (counted as $+\infty$ / 0). "
-           r"Learned rows: mean of three seeds.}\label{tab:main}", r"\begin{tabular}{llrrrrrrrr}\toprule",
+           r"route: path recall at 50\,m $\ge 0.8$ (not an exact-route or destination criterion); fail: the median episode has no output "
+           r"(failures count as $+\infty$ in ADE and 0 in c100 and route). Learned rows: every statistic, including the CI bounds, is "
+           r"the mean over three training seeds; SD of the median over seeds (test/few-shot, m): SEEDSD.}\label{tab:main}", r"\begin{tabular}{llrrrrrrrr}\toprule",
            r" & & \multicolumn{4}{c}{test} & \multicolumn{4}{c}{few-shot} \\\cmidrule(lr){3-6}\cmidrule(lr){7-10}",
            r"setting & method & ADE [CI] & drv-eq & c100 & route & ADE [CI] & drv-eq & c100 & route \\\midrule"]
     last_fam = None
+    fails, sds = {}, {}
     for key in dict.fromkeys(t.key):
         a = t[(t.key == key) & (t.fold == "test")]
         b = t[(t.key == key) & (t.fold == "few_shot_heldout")]
@@ -227,15 +235,23 @@ def main_rows(t):
                 continue
             r = d.iloc[0].to_dict()
             cells += [f"{int(r['n_expected'])} ({int(r['n_fail'])})", ci_str(r), fmt_m(r["ade_driver_median"]), f"{r['c100']:.2f}", f"{r['route_ok']:.2f}"]
+            sd = r.get("ade_median_seed_sd", np.nan)
+            if isinstance(sd, float) and np.isfinite(sd):
+                sds.setdefault(ref["label"], []).append(f"{sd:.0f}")
             texcells += [f"{fmt_m(r['ade_median'])} [{fmt_m(r['ade_lo'])}, {fmt_m(r['ade_hi'])}]" + (r"$^\dagger$" if r["n_fail"] else ""),
                          fmt_m(r["ade_driver_median"]), f"{r['c100']:.2f}", f"{r['route_ok']:.2f}"]
+            if r["n_fail"]:
+                fails.setdefault(ref["label"], []).append(f"{int(r['n_fail'])} of {int(r['n_expected']):,}".replace(",", "{,}"))
         lines.append(f"| {ref['family']} | {ref['label']} | " + " | ".join(cells) + " |")
         fam = ref["family"] if ref["family"] != last_fam else ""
         if fam and last_fam is not None:
             tex.append(r"\midrule")
         last_fam = ref["family"]
         tex.append(f"{fam} & {ref['label']} & " + " & ".join(texcells) + r" \\")
-    tex += [r"\bottomrule\end{tabular}", r"\\[2pt]\footnotesize $^\dagger$ some expected episodes without output (counted as failures).", r"\end{table*}"]
+    note = "; ".join(f"{k}: {'; '.join(v)}" for k, v in fails.items())
+    tex = [x.replace("SEEDSD", "; ".join(f"{k.split(' (')[0]} {'/'.join(v)}" for k, v in sds.items())) for x in tex]
+    tex += [r"\bottomrule\end{tabular}", r"\\[2pt]\footnotesize $^\dagger$ expected episodes without output, counted as failures (test; few-shot): " + note + ".",
+            r"\end{table*}"]
     return lines, tex
 
 
@@ -276,7 +292,8 @@ def topk_table(ep, man, n_boot=300):
     for stem, proto, req, hp in (("map_beam_steer__G3", "F-M-Hp", "G3", False), ("map_beam_steer__G3", "F-M-Hm", "G3", False),
                                  ("map_beam_none__G1", "F-M-Hp", "G1", False), ("map_beam_none__G1", "F-M-Hm", "G1", False),
                                  ("elastic_pathing_hp__G1", "F-M-Hp", "G1", True), ("elastic_pathing__G1", "F-M-Hm", "G1", False),
-                                 ("can_trace__G2", "F-M-Hm", "pedal", False), ("can_trace_area__G2", "F-M-Hm", "pedal", False)):
+                                 ("can_trace__G2", "F-M-Hm", "pedal", False), ("can_trace_area__G2", "F-M-Hm", "pedal", False),
+                                 ("dewri_hp__G1", "F-M-Hp", "G1", True), ("dewri__G1", "F-M-Hm", "G1", False)):
         for fold in FOLDS:
             exp = expected(man, "w05", fold, proto, req, hp)
             got = ep[(ep.method == stem) & (ep.protocol == proto)].drop_duplicates("episode_id").set_index("episode_id")
@@ -309,7 +326,8 @@ def topk_table(ep, man, n_boot=300):
 
 
 # (label, a = (stem or seed list, protocol, requirement, heading_only), b = same); a - b on the intersection of both
-# expected sets; failures stay in as +inf (medians) and count as losses in the win rate
+# expected sets: the paired median and mean differences use the episodes where both have an output (n), the win rate
+# counts a failure as a loss and leaves out episodes where both fail
 PAIRS = [
     ("map gain, steering, heading known", ("map_pf_steer__G3", "O-M-Hp", "G3", False), ("dr_steer__G3", "O-N-Hp", "G3", False)),
     ("map gain, steering, heading unknown", ("map_pf_steer__G3", "O-M-Hm", "G3", False), ("dr_steer__G3", "O-N-Hm", "G3", False)),
@@ -328,6 +346,8 @@ PAIRS = [
     ("OPD-II (3 s delayed) vs map PF, steering", ("opd2__G3", "F-M-Hp", "G3", True), ("map_pf_steer__G3", "O-M-Hp", "G3", False)),
     ("OPD-II vs MacroTracking", ("opd2__G3", "F-M-Hp", "G3", True), ("macrotracking__G3", "O-M-Hp", "G3", True)),
     ("OPD-II calibrated vs as released", ("opd2_calib__G3", "F-M-Hp", "G3", True), ("opd2__G3", "F-M-Hp", "G3", True)),
+    ("MacroTracking wrap-fixed vs as released", ("macrotracking_wrapfix__G3", "O-M-Hp", "G3", True), ("macrotracking__G3", "O-M-Hp", "G3", True)),
+    ("OPD-II wrap-fixed vs as released", ("opd2_wrapfix__G3", "F-M-Hp", "G3", True), ("opd2__G3", "F-M-Hp", "G3", True)),
     ("MacroTracking calibrated vs as released", ("macrotracking_calib__G3", "O-M-Hp", "G3", True), ("macrotracking__G3", "O-M-Hp", "G3", True)),
     ("learned GRU vs nominal DR, no map", (["learned_gru_s0__G3", "learned_gru_s1__G3", "learned_gru_s2__G3"], "O-N-Hp", "G3", False),
      ("dr_steer__G3", "O-N-Hp", "G3", False)),
@@ -344,6 +364,10 @@ PAIRS = [
      ("map_pf_steer__G3", "O-M-Hm", "G3", False)),
     ("Elastic Pathing (speed) vs map beam steering, heading unknown", ("elastic_pathing__G1", "F-M-Hm", "G1", False),
      ("map_beam_steer__G3", "F-M-Hm", "G3", False)),
+    ("Dewri vs Elastic Pathing, speed only, heading unknown", ("dewri__G1", "F-M-Hm", "G1", False), ("elastic_pathing__G1", "F-M-Hm", "G1", False)),
+    ("Dewri vs Elastic Pathing, start heading used", ("dewri_hp__G1", "F-M-Hp", "G1", True), ("elastic_pathing_hp__G1", "F-M-Hp", "G1", True)),
+    ("SPy (steering only) vs map beam steering, start known", ("spy_hp__G3", "F-M-Hp", "G3", True), ("map_beam_steer__G3", "F-M-Hp", "G3", False)),
+    ("SPy, known start vs 5 km area", ("spy__G3", "F-M-Hm", "G3", False), ("spy_area__G3", "F-M-Hm", "G3", False)),
 ]
 
 
@@ -374,12 +398,16 @@ def pair_table(ep, man, wins=("w05", "w15"), n_boot=1000):
                     r = stats.paired(a, b, drv, n_boot)
                     both_fail = np.isinf(a) & np.isinf(b)
                     win_a = float(np.mean((a < b)[~both_fail])) if (~both_fail).any() else np.nan
-                    per.append(dict(r, median_a=float(np.median(a)), median_b=float(np.median(b)), fail_a=int(np.isinf(a).sum()), fail_b=int(np.isinf(b).sum()), win_a_with_fail=win_a))
+                    sig = bool(r.get("n", 0)) and ((r["median_lo"] > 0) or (r["median_hi"] < 0))
+                    per.append(dict(r, median_a=float(np.median(a)), median_b=float(np.median(b)), fail_a=int(np.isinf(a).sum()), fail_b=int(np.isinf(b).sum()),
+                                    win_a_with_fail=win_a, seed_sig=float(sig)))
                 if not per:
                     continue
                 row = {k: float(np.mean([p[k] for p in per])) if isinstance(per[0].get(k), (int, float, np.floating)) else per[0].get(k) for k in per[0]}
                 if len(per) > 1:
                     row["median_diff_seed_sd"] = float(np.std([p["median"] for p in per], ddof=1))
+                row["n_seeds"] = len(per)
+                row["n_seeds_sig"] = int(sum(p["seed_sig"] for p in per))
                 rows.append(dict(comparison=label, a=sa if isinstance(sa, str) else f"{len(per)} seeds", b=sb, win=win, fold=fold, n_common=len(d), **row))
     t = pd.DataFrame(rows)
     t.to_csv(os.path.join(OUT, "pairs.csv"), index=False)
@@ -477,7 +505,9 @@ COST_LOG = paths.LOGS
 
 def cost_table():
     """RQ5: run icde_cost (scripts/run_icde_cost.sh: one worker, the same 92 validation episodes for every method).
-    Per-episode inference seconds from the runner's timing files (graph build and drive loading listed separately),
+    Per-episode inference seconds from the runner's timing files (graph build and drive loading listed separately) over
+    every attempted episode, a failed one with the time the method spent before giving up (column ok = 0; timing files
+    written before 10/31 have no such column and record outputs only: those runs had no failure on this subset),
     peak resident memory and wall time of the whole run from /usr/bin/time -v."""
     rows = []
     for tf in sorted(glob.glob(os.path.join(COST_LOG, "icde_cost", "*.time"))):
@@ -503,6 +533,7 @@ def cost_table():
             e["win"] = e.key.str.split("/").str[2]
             for win, g in e.groupby("win"):
                 row[f"n_{win}"] = len(g)
+                row[f"n_fail_{win}"] = int((g.ok == 0).sum()) if "ok" in g else 0
                 row[f"infer_median_s_{win}"] = float(g.secs.median())
                 row[f"infer_p90_s_{win}"] = float(g.secs.quantile(0.9))
             gr = t[t.protocol == "_graph"].secs
@@ -512,6 +543,26 @@ def cost_table():
     c = pd.DataFrame(rows)
     c.to_csv(os.path.join(OUT, "cost.csv"), index=False)
     return c
+
+
+def cost_accuracy_table():
+    """RQ5 accuracy on the same subset (run icde_cost scored with scripts/score.py --run icde_cost --eligible-only --folds val
+    --episodes-file manifests/icde_cost_episodes_valhalla.csv): failure-aware median ADE (+inf for an episode without
+    output) and route share (0 for it) per method, protocol and window."""
+    e = pd.read_parquet(os.path.join(paths.SCORES, "icde_cost", "episodes_all.parquet"), columns=["episode_id", "method", "protocol", "win", "ade", "route_ok"])
+    ids = pd.read_csv(os.path.join(paths.MANIFESTS, "icde_cost_episodes_valhalla.csv")).episode_id
+    rows = []
+    for (m, p), g in e.groupby(["method", "protocol"]):
+        for w, gg in g.groupby("win"):
+            gg = gg.drop_duplicates("episode_id").set_index("episode_id")
+            sel = [i for i in ids if f"/{w}/" in i]
+            a = gg.ade.reindex(sel).to_numpy(float)
+            a = np.where(np.isnan(a), np.inf, a)
+            rows.append(dict(method=m, protocol=p, win=w, n=len(a), fail=int(np.isinf(a).sum()), ade_median=float(np.median(a)),
+                             route=float(gg.route_ok.reindex(sel).fillna(0).astype(float).mean())))
+    t = pd.DataFrame(rows)
+    t.to_csv(os.path.join(OUT, "cost_accuracy.csv"), index=False)
+    return t
 
 
 COHORT_PAIRS = [("beam vs PF lineage", ("map_beam_steer__G3", "F-M-Hp"), ("map_pf_steer_lineage__G3", "F-M-Hp")),
@@ -571,7 +622,9 @@ def signal_tables(ep, man, n_boot=500):
 SIG_REFERENCE = [("pf", "map_pf_steer__G3", "O-M-Hp"), ("beam", "map_beam_steer__G3", "F-M-Hp"), ("opd2", "opd2__G3", "F-M-Hp"),
                  ("macro", "macrotracking__G3", "O-M-Hp"), ("pf_none", "map_pf_none__G1", "O-M-Hp"), ("beam_none", "map_beam_none__G1", "F-M-Hp"),
                  ("ep", "elastic_pathing__G1", "F-M-Hm"), ("ep_hp", "elastic_pathing_hp__G1", "F-M-Hp"),
-                 ("ct", "can_trace__G2", "F-M-Hm"), ("ct_area", "can_trace_area__G2", "F-M-Hm")]
+                 ("ct", "can_trace__G2", "F-M-Hm"), ("ct_area", "can_trace_area__G2", "F-M-Hm"),
+                 ("dewri", "dewri__G1", "F-M-Hm"), ("dewri_hp", "dewri_hp__G1", "F-M-Hp"), ("spy_hp", "spy_hp__G3", "F-M-Hp"),
+                 ("spy_area", "spy_area__G3", "F-M-Hm")]
 
 
 if __name__ == "__main__":

@@ -6,6 +6,8 @@
 
 Baselines: p0_hold, prior, dr_none, retrieval (G1); dr_steer, dr_steer_offfixed, dr_steer_calib, dr_steer_offonline (G3);
 dr_can_yaw (G4); dr_curvature, dr_loc_yaw (G5); map_pf_{none,steer,steer_calib,can_yaw,curvature} (map protocols).
+Published methods (map protocols): elastic_pathing(_hp), dewri(_hp) (G1); can_trace(_area) (G2); macrotracking, opd2,
+spy_area, spy, spy_hp (G3; SPy reads the steering angle only).
 Static parameters come from manifests/vehicle_params.csv keyed by the drive's platform (manifests/drive_platform.csv),
 with manifests/calibration_global.json as the unseen-platform fallback for the calibrated variants.
 The reference loader is disabled while baselines run (io.load_gps raises). Prediction files are written per shard
@@ -42,6 +44,8 @@ from cantraj.baselines.macrotracking import MacroTracking  # noqa: E402
 from cantraj.baselines.elastic_pathing import ElasticPathing  # noqa: E402
 from cantraj.baselines.can_trace import CANTrace  # noqa: E402
 from cantraj.baselines.opd2 import OPD2  # noqa: E402
+from cantraj.baselines.spy import SPy  # noqa: E402
+from cantraj.baselines.dewri import Dewri  # noqa: E402
 from cantraj.learn.provider import MotionProvider  # noqa: E402
 from cantraj.maps.graph import EpisodeGraphView, build_graph_tiles  # noqa: E402
 from cantraj.perturb import episode_rng, parse_spec, perturb_stream  # noqa: E402
@@ -87,6 +91,12 @@ BASELINES = {
     "elastic_pathing_hp": lambda: ElasticPathing(heading=True, friction=0.15, v_zero=1.0),  # adapted: start edges within 45 deg of theta0 (F-M-Hp)
     "can_trace": lambda: CANTrace(start="known"),                          # published speed + accelerator-pedal method, known-start adaptation (F-M-Hm, G2)
     "can_trace_area": lambda: CANTrace(start="area"),                      # the paper's prior: 5 km square around p0, any start junction
+    # published steering-only method; smoothing window / turn-ramp level chosen on 60 val drives (reports/icde/spy_val_selection.csv)
+    "spy_area": lambda: SPy(start="area", ma=5, ramp_deg=45.0),            # the paper's area prior: 5 km square around p0 (F-M-Hm, G3)
+    "spy": lambda: SPy(start="known", ma=5, ramp_deg=45.0),                # known-start adaptation (F-M-Hm)
+    "spy_hp": lambda: SPy(start="known", heading=True, ma=5, ramp_deg=45.0),  # + start edges within 45 deg of theta0 (F-M-Hp)
+    "dewri": lambda: Dewri(),                                              # published speed-only method: start known, heading unused (F-M-Hm, G1)
+    "dewri_hp": lambda: Dewri(heading=True),                               # adapted: start edges within 45 deg of theta0 (F-M-Hp)
     "opd2": lambda: OPD2(),                                                # published method, final output (F-M-Hp; delayed online <= 3 s)
     "opd2_online": lambda: OPD2(readout="online"),                         # strictly online read-out (O-M-Hp)
     "opd2_calib": lambda: OPD2(calib=True),                                # + train-fold steering calibration
@@ -169,7 +179,8 @@ def sha_files(files):
 
 def version_fields(args):
     """Provenance recorded in every part's meta.json (benchmark v1.1 run registry)."""
-    src = glob.glob(os.path.join(paths.GPS_DIR, "src", "cantraj", "**", "*.py"), recursive=True) + [os.path.abspath(__file__)]
+    src = (glob.glob(os.path.join(paths.GPS_DIR, "src", "cantraj", "**", "*.py"), recursive=True)
+           + glob.glob(os.path.join(paths.GPS_DIR, "src", "cantraj", "**", "*.c"), recursive=True) + [os.path.abspath(__file__)])
     tm = os.path.join(paths.MANIFESTS, "map_tiles_v2.csv" if "tiles_v2" in args.tiles_dir else "map_tiles.csv")
     return dict(code_sha=sha_files(src),
                 scorer_sha=sha_files([os.path.join(paths.GPS_DIR, "src", "cantraj", f) for f in ("metrics.py", "scoring.py")]),
@@ -217,7 +228,7 @@ def _drive_job(job):
     except Exception as e:  # noqa: BLE001
         return {}, [(f"{driver}/{drive}", f"drive load failed: {type(e).__name__}: {str(e)[:60]}")], {}, time.time() - t0, []
     t_loaded = time.time() - t0
-    timing = [("_load", "_drive", f"{driver}/{drive}", t_loaded)]
+    timing = [("_load", "_drive", f"{driver}/{drive}", t_loaded, 1)]       # last field: 1 = output, 0 = the method failed
     static, plat = static_lookup()(driver, drive, model_canon)
     io.load_gps = _deny
     RouteRetrieval._exclude = driver
@@ -248,7 +259,7 @@ def _drive_job(job):
                                 tiles.update(tiles_in_radius(e.init_full["p0_lat"], e.init_full["p0_lon"], min(registry.map_radius_m(spec, e.t_end - e.t0), MAP_CAP_M)))
                             t_g = time.time()
                             graphs[win] = build_graph_tiles(tiles_dir, tiles, fr)
-                            timing.append(("_graph", win, f"{driver}/{drive}", time.time() - t_g))
+                            timing.append(("_graph", win, f"{driver}/{drive}", time.time() - t_g, 1))
                         g_drive = graphs[win]
                         need_t = tiles_in_radius(ep.init_full["p0_lat"], ep.init_full["p0_lon"], min(registry.map_radius_m(spec, ep.t_end - ep.t0), MAP_CAP_M))
                         need = [f"t{i}_{j}" for i, j in need_t]
@@ -258,6 +269,7 @@ def _drive_job(job):
                             continue
                         # v1.1: only the episode's own tiles are visible, bearings in the episode frame
                         graph = EpisodeGraphView(g_drive, ep.frame, visible_tiles=need_t if visibility else None)
+                    t_e = None
                     try:
                         inp = dd.inputs(ep, group, proto, static, map_graph=graph, warmup_s=warmup_s)
                         if PERTURB:                     # research ablation: degrade the inputs the baseline sees (never the reference)
@@ -271,8 +283,10 @@ def _drive_job(job):
                             setattr(b, k_, v_)
                         t_e = time.time()
                         frames.setdefault(key, []).append(replay.run_episode(b, inp, ep, spec))
-                        timing.append((proto, baseline, eid, time.time() - t_e))
+                        timing.append((proto, baseline, eid, time.time() - t_e, 1))
                     except Exception as e:  # noqa: BLE001
+                        if t_e is not None:     # the method ran and failed: its time is part of the cost too
+                            timing.append((proto, baseline, eid, time.time() - t_e, 0))
                         skipped.append((eid, f"{baseline}: {type(e).__name__}: {str(e)[:60]}", proto, baseline))
     finally:
         io.load_gps = real_load
@@ -423,7 +437,7 @@ def main():
                     print(f"{proto} {b} {args.group} shard {args.shard}: nothing new; map_missing {len(mi)}", flush=True)
                 if final and timings:          # per-episode inference seconds (and per-drive load / graph seconds) for the cost analysis
                     tm = pd.DataFrame([t_ for t_ in timings if t_[0] in (proto, "_load", "_graph") and (t_[0] != proto or t_[1] == b)],
-                                      columns=["protocol", "baseline", "key", "secs"])
+                                      columns=["protocol", "baseline", "key", "secs", "ok"])
                     tm_path = os.path.join(out_dir, f"{stems[b]}.part{k}.timing.csv")
                     if args.resume and os.path.exists(tm_path):
                         tm = pd.concat([pd.read_csv(tm_path), tm]).drop_duplicates(["protocol", "baseline", "key"], keep="last")

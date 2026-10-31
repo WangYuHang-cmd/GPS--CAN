@@ -23,11 +23,12 @@ FIG = os.path.join(paths.GPS_DIR, "paper_icde", "figures")
 DATA = os.path.join(paths.GPS_DIR, "reports", "icde", "figures_data")
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e6e5e1"
 FORBIDDEN = re.compile(r"dongle|route_id|\b[0-9a-f]{16}\b|lat[_ ]?0|lon[_ ]?0|the Controlled-supplement city|/data/", re.I)
-# Encoding (validated with the dataviz validator, --pairs all, light): hue = signal set, the first two slots of the
-# reference palette (blue = speed only, orange = speed + steering); line style = decoder (solid: online map filter,
-# dashed: offline beam, dotted: no map, dash-dot + marker: a published method). At most five lines per panel, each
-# direct-labelled; a shared legend below. Same entity, same style in every panel.
-SPEED, STEER = "#2a78d6", "#eb6834"
+# Encoding (validated with the dataviz validator, --pairs all, light): hue = signal set, the first three slots of the
+# reference palette (blue = speed only, orange = speed + steering, aqua = steering only: SPy); line style = decoder
+# (solid: online map filter, dashed: offline beam, dotted: no map, dash-dot + marker: a published method). At most five
+# lines per panel, each direct-labelled (aqua is below 3:1 contrast on white: the direct label carries it); a shared
+# legend below. Same entity, same style in every panel.
+SPEED, STEER, STEER_ONLY = "#2a78d6", "#eb6834", "#1baf7a"
 STYLE = {
     ("dr_none__G1", "O-N-Hp"): ("straight line, no map", SPEED, ":", None),
     ("dr_steer__G3", "O-N-Hp"): ("steering DR, no map", STEER, ":", None),
@@ -45,14 +46,18 @@ STYLE = {
     ("map_pf_none__G1", "O-M-Hm"): ("map PF, speed", SPEED, "-", None),
     ("map_beam_none__G1", "F-M-Hm"): ("map beam, speed", SPEED, "--", None),
     ("elastic_pathing__G1", "F-M-Hm"): ("Elastic Pathing", SPEED, "-.", "^"),
+    ("dewri_hp__G1", "F-M-Hp"): ("Dewri et al.", SPEED, "-.", "v"),
+    ("dewri__G1", "F-M-Hm"): ("Dewri et al.", SPEED, "-.", "v"),
+    ("spy_hp__G3", "F-M-Hp"): ("SPy", STEER_ONLY, "-.", "D"),
+    ("spy__G3", "F-M-Hm"): ("SPy", STEER_ONLY, "-.", "D"),
 }
 CDF_PANELS = [
     ("speed vs steering, same decoders", [("dr_steer__G3", "O-N-Hp"), ("map_pf_none__G1", "O-M-Hp"), ("map_pf_steer__G3", "O-M-Hp"),
                                           ("map_beam_none__G1", "F-M-Hp"), ("map_beam_steer__G3", "F-M-Hp")]),
     ("published methods", [("map_pf_steer__G3", "O-M-Hp"), ("macrotracking__G3", "O-M-Hp"), ("opd2__G3", "F-M-Hp"),
-                           ("elastic_pathing_hp__G1", "F-M-Hp")]),
+                           ("elastic_pathing_hp__G1", "F-M-Hp"), ("spy_hp__G3", "F-M-Hp")]),
     ("start heading unknown", [("map_pf_steer__G3", "O-M-Hm"), ("map_beam_steer__G3", "F-M-Hm"), ("map_beam_none__G1", "F-M-Hm"),
-                               ("elastic_pathing__G1", "F-M-Hm")]),
+                               ("elastic_pathing__G1", "F-M-Hm"), ("dewri__G1", "F-M-Hm")]),
 ]
 LABEL_Y = [0.18, 0.36, 0.54, 0.72, 0.9]
 
@@ -126,7 +131,7 @@ def fig_cdf(ep, man):
         ax.set_xlabel("5-minute ADE (m), test drivers")
         ax.set_title(title, fontsize=8)
     axes[0].set_ylabel("share of episodes")
-    fig.legend(list(handles.values()), list(handles.keys()), loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.2), fontsize=6.5)
+    fig.legend(list(handles.values()), list(handles.keys()), loc="lower center", ncol=5 if len(handles) > 8 else 4, bbox_to_anchor=(0.5, -0.2), fontsize=6.5)
     os.makedirs(DATA, exist_ok=True)
     pd.DataFrame(rows).to_csv(os.path.join(DATA, "fig_cdf.csv"), index=False)
     save(fig, "fig_cdf_w05")
@@ -231,8 +236,10 @@ def fig_topk():
     t = t[t.fold == "test"]
     fig, axes = plt.subplots(1, 2, figsize=(7.16, 2.3), sharey=True)
     Ks = [1, 3, 5, 10]
-    panels = [("start heading known", [("map_beam_none__G1", "F-M-Hp"), ("map_beam_steer__G3", "F-M-Hp"), ("elastic_pathing_hp__G1", "F-M-Hp")]),
-              ("start heading unknown", [("map_beam_none__G1", "F-M-Hm"), ("map_beam_steer__G3", "F-M-Hm"), ("elastic_pathing__G1", "F-M-Hm")])]
+    panels = [("start heading known", [("map_beam_none__G1", "F-M-Hp"), ("map_beam_steer__G3", "F-M-Hp"), ("elastic_pathing_hp__G1", "F-M-Hp"),
+                                       ("dewri_hp__G1", "F-M-Hp")]),
+              ("start heading unknown", [("map_beam_none__G1", "F-M-Hm"), ("map_beam_steer__G3", "F-M-Hm"), ("elastic_pathing__G1", "F-M-Hm"),
+                                         ("dewri__G1", "F-M-Hm")])]
     rows, handles = [], {}
     for ax, (title, keys) in zip(axes, panels):
         for key in keys:
@@ -253,7 +260,7 @@ def fig_topk():
         ax.set_xlabel("K (candidate paths, in rank order)")
         ax.set_title(title, fontsize=8)
     axes[0].set_ylabel("median ADE of the best\nof the first K paths (m)")
-    fig.legend(list(handles.values()), list(handles.keys()), loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.16), fontsize=6.5)
+    fig.legend(list(handles.values()), list(handles.keys()), loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.16), fontsize=6.5)
     os.makedirs(DATA, exist_ok=True)
     pd.DataFrame(rows).to_csv(os.path.join(DATA, "fig_topk.csv"), index=False)
     save(fig, "fig_topk_w05")
