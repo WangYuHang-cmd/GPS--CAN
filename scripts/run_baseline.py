@@ -273,7 +273,7 @@ def _drive_job(job):
                     try:
                         inp = dd.inputs(ep, group, proto, static, map_graph=graph, warmup_s=warmup_s)
                         if PERTURB:                     # research ablation: degrade the inputs the baseline sees (never the reference)
-                            inp.events = perturb_stream(inp.events, PERTURB, episode_rng(eid, PERTURB_SPEC))
+                            inp.events = perturb_stream(inp.events, PERTURB, episode_rng(eid, PERTURB_SPEC), drive_key=f"{driver}/{drive}")
                         if INIT_PERTURB:                # research ablation: wrong start position / heading given to the baseline
                             inp.init = perturb_init(inp.init, INIT_PERTURB, episode_rng(eid, "init|" + INIT_SPEC))
                         b = BASELINES[baseline]()

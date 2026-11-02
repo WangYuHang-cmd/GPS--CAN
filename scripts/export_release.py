@@ -35,7 +35,8 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
-                 "tile_pilot_maps.py", "make_pilot_report.py", "run_pilot.sh", "stop_chain2_before_full.sh"}
+                 "tile_pilot_maps.py", "make_pilot_report.py", "run_pilot.sh", "stop_chain2_before_full.sh",
+                 "stage_public_package.py", "upload_public_package.py"}       # anonymous-package tooling: never in this (named) repository
 TEXT_EXT = {".py", ".md", ".txt", ".yaml", ".yml", ".csv", ".ini", ".cfg", ".toml", ".json", ".sh"}
 DATA_EXT = {".csv", ".json", ".md", ".txt"}
 OPENPILOT = "$OPENPILOT_DIR"

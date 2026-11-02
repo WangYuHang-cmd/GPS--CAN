@@ -20,10 +20,11 @@ GPS-denied localisation task, with one frozen protocol set, one evaluation engin
 ```
 pip install -r requirements.txt            # Python 3.12; torch only for training the learned baselines
 export CANTRAJ_BENCH=/path/to/cache CANTRAJ_GPS=/path/to/DriveDNA-GPS CANTRAJ_DRIVEDNA=/path/to/DriveDNA
-export CANTRAJ_MANIFESTS=/path/to/DriveDNA-GPS/benchmark
+export CANTRAJ_MANIFESTS=/path/to/DriveDNA-GPS/benchmark/manifests   # the manifests folder of the gated dataset's benchmark/
 export PYTHONPATH=$PWD/src
-pytest -q                                   # 50 tests: synthetic line / circle, whitelist, raw-event causality, metrics,
-                                            # map filter and beam on a synthetic grid, learned wrapper, perturbations, warm start
+pytest -q                                   # 125 tests: synthetic line / circle, whitelist, raw-event causality, metrics,
+                                            # map filter and beam on a synthetic grid, learned wrapper, perturbations, warm start,
+                                            # the six published-method re-implementations on synthetic networks
 ```
 
 ## Protocols, groups, baselines
@@ -56,6 +57,37 @@ python scripts/make_tables.py --run full_v1 --n-boot 1000                     # 
 python scripts/make_paper_tables.py && python scripts/paper_curves.py && python scripts/make_paper_figures.py
 python scripts/failure_analysis.py
 ```
+
+## Quick start (benchmark v1.1, the ICDE study; run icde_v11)
+
+Benchmark v1.1 = v1 with map v2 tiles (every needed tile re-cut from all intersecting extracts), the map-start rule
+(`map_start_ok`: a drivable edge within 400 m of p0), per-episode visible maps with episode-frame bearings, the learned
+motion source fed at event times and the named failure flags (`specs/benchmark_v1.md`, `PLAN_ICDE_EAB.md`). Thresholds,
+windows, splits and reference are v1's; no-map rows are unchanged v1 runs. Map tiles: use the published tile set
+(`map_tiles_v2.csv` lists every tile's source extract, md5 and snapshot date; exact reproduction), or re-cut from
+current Geofabrik extracts with `python scripts/recut_tiles_v2.py` (a different OpenStreetMap snapshot: map numbers
+move; the script refuses to overwrite a published tile list without `--force`).
+
+```
+python scripts/build_map_episodes.py                      # manifests/episode_map_v11.parquet: map_start_ok, tiles per episode
+scripts/run_icde_maps.sh                                  # map PF and beam, speed only / steering, H+ / H-, w05 w15 full
+scripts/run_icde_methods.sh                               # MacroTracking, OPD-II (pyvalhalla 3.9.1, scripts/build_valhalla_v2.py first),
+                                                          # Elastic Pathing, CAN-Trace; author-sample checks in scripts/validate_*.py
+scripts/run_icde_spy_dewri.sh                             # SPy / RoCuMa (validation selection first) and Dewri et al.
+scripts/run_icde_learned.sh                               # learned motion sources in the map filter; signal-set study (3 seeds)
+scripts/run_icde_cohort.sh                                # same-cohort 1 / 5 / 15 minute prefixes (manifests/cohort_v11.csv)
+scripts/run_icde_cost.sh; scripts/run_icde_cost_pedal.sh  # cost study, one worker (92 validation windows; pedal subset for CAN-Trace)
+scripts/run_icde_probe.sh                                 # degraded-input sensitivity sweep (run icde_probe, fixed grid)
+python scripts/score.py --run icde_v11 --manifest $CANTRAJ_MANIFESTS/episode_manifest_v1.parquet --eligible-only \
+    --folds test few_shot_heldout --workers 2 --resume
+python scripts/icde_tables.py --extras pairs topk signal cohort cost robust robust_map   # reports/icde/tables/*.csv, main_board.tex
+python scripts/icde_area_check.py && python scripts/icde_extra.py                         # map-extent checks; complementarity, confidence
+python scripts/icde_figures.py --figs cdf topk horizon && python scripts/icde_macros.py && python scripts/registry.py
+```
+
+`run_icde_seq.sh` is the single sequential chain that produced the published runs (memory gate, 2 to 5 workers per
+step); every run writes `meta.json` (benchmark version, manifest sha256, tile list md5, code sha, seed) that
+`scripts/registry.py` collects into `reports/icde/run_registry.{csv,md}`.
 
 Runner options: `--flush-min 15` rewrites part files every 15 minutes so `--resume` recovers a killed pass;
 `--perturb speed_quant=1,speed_noise=0.5,steer_hz=1 --stem-suffix _pq1` (input perturbation, causal, per-episode

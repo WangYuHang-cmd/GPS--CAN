@@ -1,14 +1,18 @@
 method,source,signals,priors,map,mode,training data,output
-Straight line,baseline,speed,"$p_0, \theta_0$",--,online,--,position
-Steering DR,baseline,"speed, steering","$p_0, \theta_0$",--,online,-- / calib.$^a$,position
-Learned GRU,baseline,"speed, steering","$p_0, \theta_0$",--,online,train GPS,position
-Map PF,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM,online,--,position
-Map beam,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM,offline,--,top-10 paths
-MacroTracking~\cite{gazdag2023privacy},re-impl.,"speed, steering","$p_0, \theta_0$",OSM,online,-- / calib.$^a$,position
-OPD-II~\cite{bianchi2025opd},re-impl.,"speed, steering","$p_0, \theta_0$",OSM (Meili),"delayed $\le$3\,s$^b$",-- / calib.$^a$,position
-Elastic Pathing~\cite{gao2017elastic},re-impl.,"speed (1\,Hz)",$p_0$ (+$\theta_0$)$^c$,OSM,offline,val (2 values),top-$n$ paths
-CAN-Trace~\cite{lin2025cantrace},re-impl.,"speed, accel.\ pedal",area / $p_0$$^c$,OSM,offline,--,top-10 paths
-Dewri et al.~\cite{dewri2013inferring},re-impl.,"speed (1\,Hz)",$p_0$ (+$\theta_0$)$^c$,OSM,offline,--,top-10 paths
-SPy~\cite{pese2020spy},re-impl.,steering,area / $p_0$ (+$\theta_0$)$^c$,OSM,offline,val (2 values),path
-Signal-set GRU (S1--S4),study,per set,"$p_0, \theta_0$",-- / OSM,online,train GPS,position
-Curvature DR (class F),reference,"speed, localizer curv.","$p_0, \theta_0$",-- / OSM,online,GPS-informed$^d$,position
+Hold start,baseline,none,$p_0$,none,online,none,position
+Straight line,baseline,speed,"$p_0, \theta_0$",none,online,none,position
+Steering DR,baseline,"speed, steering","$p_0, \theta_0$",none,online,none / calib.$^a$,position
+Start prior,baseline,speed,"$p_0, \theta_0$",none,online,train GPS (statistics),position
+Route retrieval,baseline,speed,"$p_0, \theta_0$",none,online,train GPS (routes),position
+Learned GRU,baseline,"speed, steering","$p_0, \theta_0$",none / OSM disc,online,train GPS,position
+Learned physics residual,baseline,"speed, steering","$p_0, \theta_0$",none / OSM disc,online,train GPS,position
+Map PF,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM disc,online,none,position
+Map beam,baseline,speed (+steering),$p_0$ (+$\theta_0$),OSM disc,offline,none,top-10 paths
+MacroTracking~\cite{gazdag2023privacy},re-impl.,"speed, steering","$p_0, \theta_0$",OSM disc,online,none / calib.$^a$,position
+OPD-II~\cite{bianchi2025opd},re-impl.,"speed, steering","$p_0, \theta_0$","OSM, Meili$^e$","delayed $\le$3\,s$^b$",none / calib.$^a$,position
+Elastic Pathing~\cite{gao2017elastic},re-impl.,"speed (1\,Hz)",$p_0$$^c$ (+$\theta_0$),OSM disc,offline,val (2 values),top-$n$ paths
+CAN-Trace~\cite{lin2025cantrace},re-impl.,"speed, accel.\ pedal",area$^c$ / $p_0$,OSM disc,offline,none,top-10 paths
+Dewri et al.~\cite{dewri2013inferring},re-impl.,"speed (1\,Hz)",$p_0$$^c$ (+$\theta_0$),OSM disc,offline,none,top-10 paths
+SPy~\cite{pese2020spy},re-impl.,steering,area$^c$ / $p_0$ (+$\theta_0$),OSM disc,offline,val (2 values),path
+Signal-set GRU (S1 to S4),study,per set,"$p_0, \theta_0$",none / OSM disc,online,train GPS,position
+Curvature DR (class F),reference,"speed, localizer curv.","$p_0, \theta_0$",none / OSM disc,online,GPS-informed$^d$,position

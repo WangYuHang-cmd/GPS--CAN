@@ -40,6 +40,9 @@ def main():
     m["NTrainValDrives"], m["NTrainValDrivers"] = n(len(tv)), n(tv.driver.nunique())
     ua = dr[~dr.fold.isin(["train", "val", "test", "few_shot_heldout"])]
     m["NUnassignedDrives"], m["NUnassignedDrivers"] = n(len(ua)), n(ua.driver.nunique())
+    m["NEligibleInFolds"] = n(e.fold.isin(["train", "val", "test", "few_shot_heldout"]).sum())
+    pu = man[man.admission == "platform_unconfirmed"].drop_duplicates(["driver", "drive"])   # out of the CAN-only board
+    m["NPlatformUnconfirmedDrives"], m["NPlatformUnconfirmedDrivers"] = n(len(pu)), n(pu.driver.nunique())
     for fold, tag in (("test", "Test"), ("few_shot_heldout", "FewShot"), ("val", "Val")):
         for win, wt in (("w01", "One"), ("w05", "Five"), ("w15", "Fifteen"), ("full", "Full")):
             s = e[(e.fold == fold) & (e.win == win)]
@@ -56,6 +59,7 @@ def main():
     dd = dr.merge(aw, on=["driver", "drive"], how="left")
     for fold, tag in (("test", "Test"), ("few_shot_heldout", "FewShot")):
         m[f"NPedal{tag}Drives"] = n(((dd.fold == fold) & (dd.gas == "valid")).sum())
+    m["NPedalHeldoutDrives"] = n((dd.fold.isin(["test", "few_shot_heldout"]) & (dd.gas == "valid")).sum())
     rg = os.path.join(paths.MANIFESTS, "map_regions.csv")
     if os.path.exists(rg):                     # OpenStreetMap extract regions needed by at least one drive's map disc
         r = pd.read_csv(rg)
@@ -68,6 +72,11 @@ def main():
     mm = me[me.fold.isin(["test", "few_shot_heldout"])]
     m["MapStartMissingMain"] = n((~mm.map_start_ok).sum())
     m["MapStartDistMedian"] = f"{mm.start_edge_dist_m.median():.1f}"
+    ok_ids = set(me[me.map_ok].episode_id)
+    for fold, tag in (("test", "Test"), ("few_shot_heldout", "FewShot")):   # whole drives that end beyond the 60 km visible disc
+        f = e[(e.fold == fold) & (e.win == "full") & e.episode_id.isin(ok_ids)]
+        m[f"FullBeyondDisc{tag}"] = n((f.net_disp_m > 60_000).sum())
+        m[f"FullMapOk{tag}"] = n(len(f))
     audit = pd.read_csv(os.path.join(paths.GPS_DIR, "reports", "icde", "map_tile_audit.csv"))
     m["NTilesVtwo"] = n(len(audit))
     m["NTilesTruncated"] = n(audit.v1_truncated.sum())
@@ -93,6 +102,8 @@ def main():
         for g, tag in (("S2c", "SpeedPedal"), ("S4c", "AllPedal")):
             v = 100 * (t[(t.group == g) & (t.block == "pedal")].ratio - 1)
             m[f"SigUsePedal{tag}Pct"] = f"{v.mean():+.1f}".replace("+", "$+$").replace("-", "$-$")
+            m[f"SigUsePedal{tag}PctMin"] = f"{v.min():+.1f}".replace("+", "$+$").replace("-", "$-$")   # per-seed range
+            m[f"SigUsePedal{tag}PctMax"] = f"{v.max():+.1f}".replace("+", "$+$").replace("-", "$-$")
         v = 100 * (t[t.block == "flags"].ratio - 1)
         m["SigUseFlagsPctMin"] = f"{v.min():+.1f}".replace("+", "$+$").replace("-", "$-$")
         m["SigUseFlagsPctMax"] = f"{v.max():+.1f}".replace("+", "$+$").replace("-", "$-$")
@@ -138,6 +149,7 @@ def main():
             if k is None or r["win"] != "w15":
                 continue
             m[k + "LostPct"] = f"{100 * r['lost_rate']:.0f}"
+            m[k + "N"] = n(r["n_episodes"])
             m[k + "OnsetMedian"] = n(r["onset_median_s"])
             m[k + "AfterTurnPct"] = f"{100 * r['within_30s_after_turn']:.0f}"
             m[k + "ChancePct"] = f"{100 * r['within_30s_chance_approx']:.0f}"
@@ -150,15 +162,21 @@ def main():
             lvl = r["level"].split(" ")[0].capitalize()
             k = f"Dens{camel(r['method'].split('__')[0])}{lvl}"
             m[k + "Med"] = m_or_fail(r["ade_median"])
-            m[k + "LostPct"] = f"{100 * r['lost_road']:.0f}"
+            m[k + "LostPct"] = f"{100 * r['lost_road']:.0f}"          # tail_lost100 share (final fifth beyond 100 m)
+            m[k + "Drivers"] = n(r["n_drivers"])
         for r in t_all[(t_all.win == "w15") & (t_all.fold == "main")].to_dict("records"):
             lvl = r["level"].split(" ")[0].capitalize()
             m[f"Dens{camel(r['method'].split('__')[0])}{lvl}MedFifteen"] = m_or_fail(r["ade_median"])
         m["DensNFive"] = n(t[t.method == "map_pf_steer__G3"].n_episodes.min())
+        t15 = t_all[(t_all.win == "w15") & (t_all.fold == "main") & (t_all.method == "map_pf_steer__G3")]
+        if len(t15):
+            m["DensNFifteen"] = n(t15.n_episodes.min())
         cuts = sorted({int(x) for lv in t.level.unique() for x in __import__("re").findall(r"(\d+)/km2", lv)})
         if len(cuts) == 2:
             m["DensCutLow"], m["DensCutHigh"] = n(cuts[0]), n(cuts[1])
     cost_macros(m)
+    robust_map_macros(m)
+    supp_macros(m)
     sig_macros(m)
     tk = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "topk_w05.csv")
     if os.path.exists(tk):                     # Topk<Method><Hp|Hm><Fold>K<One|Three|Five|Ten>, BestFirst (%), Single
@@ -198,6 +216,19 @@ def main():
         c = c[c.cohort]
         m["NCohortDrives"] = n(len(c))
         m["NCohortDrivers"] = n(c.driver.nunique())
+    ac = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "area_coverage.csv")
+    if os.path.exists(ac):                     # scripts/icde_area_check.py: Area<Ct|Spy><Fold>OutPct / N, DiscOut<G3|G1><Win><Fold>Pct / N
+        for r in pd.read_csv(ac).to_dict("records"):
+            if r["fold"] not in FOLD_TAG or not r["n"]:
+                continue
+            if r["check"] == "out_square":
+                k = f"Area{camel(r['method'])}{FOLD_TAG[r['fold']]}"
+            else:
+                k = f"DiscOut{camel(r['method'])}{WIN_TAG[r['win']]}{FOLD_TAG[r['fold']]}"
+            m[k + "OutPct"] = f"{100 * r['share']:.0f}"
+            m[k + "OutN"] = n(r["n_out"])
+            m[k + "N"] = n(r["n"])
+    extra_macros(m)
     with open(OUT, "w") as f:
         f.write("% generated by scripts/icde_macros.py from the manifests and reports/icde/tables; do not edit\n")
         for k, v in sorted(m.items()):
@@ -261,6 +292,10 @@ def results_macros(m):
             m[k + "Hi"] = m_or_fail(r["ade_hi"])
             m[k + "Drv"] = m_or_fail(r["ade_driver_median"])
             m[k + "Route"] = f"{100 * r['route_ok']:.0f}"
+            m[k + "TermLost"] = f"{100 * r['terminal_lost100']:.0f}"      # ends beyond 100 m (failures count as lost)
+            m[k + "TailLost"] = f"{100 * r['tail_lost100']:.0f}"
+            m[k + "EndWithinFiveHundred"] = f"{100 * r['end_within_500']:.0f}"
+            m[k + "EndOff"] = f"{100 * (1 - r['end_within_500']):.0f}"     # ends more than 500 m off (failures count as off)
             m[k + "Fail"] = n(r["n_fail"])
             m[k + "N"] = n(r["n_expected"])
             m[k + "Out"] = n(r["n_output"])
@@ -307,6 +342,9 @@ def cost_macros(m):
             v = r.get("infer_p90_s_w05")
             if v is not None and np.isfinite(v):
                 m[k + "FiveNinety"] = f"{v:.2f}"
+            v = r.get("n_fail_w05")
+            if v is not None and np.isfinite(v):
+                m[k + "FailFive"] = n(v)                    # searches that gave up on this subset (their time is counted)
             m[k + "Rss"] = f"{r['peak_rss_gb']:.1f}"
         m["CostGraph"] = f"{c.graph_build_median_s.median():.1f}"
         m["CostRssMax"] = f"{c.peak_rss_gb.max():.1f}"
@@ -314,6 +352,25 @@ def cost_macros(m):
         m["CostN"] = n(len(e))
         m["CostDrives"] = n(e.episode_id.str.split("/").str[:2].str.join("/").nunique())
         m["CostNFive"] = n(e.episode_id.str.contains("/w05/").sum())
+    p = os.path.join(tabs, "cost_pedal.csv")
+    if os.path.exists(p):                      # CostPedal<tag><Five|Fifteen>: the pedal-valid validation subset (CAN-Trace and its comparators)
+        c = pd.read_csv(p)
+        for r in c.to_dict("records"):
+            k = f"CostPedal{camel(r['tag'])}"
+            for win, tag in (("w05", "Five"), ("w15", "Fifteen")):
+                v = r.get(f"infer_median_s_{win}")
+                if v is not None and np.isfinite(v):
+                    m[k + tag] = f"{v:.2f}" if v >= 0.01 else f"{v:.3f}"
+                v = r.get(f"n_fail_{win}")
+                if v is not None and np.isfinite(v):
+                    m[k + "Fail" + tag] = n(v)
+            v = r.get("infer_p90_s_w05")
+            if v is not None and np.isfinite(v):
+                m[k + "FiveNinety"] = f"{v:.2f}"
+        e = pd.read_csv(os.path.join(paths.MANIFESTS, "icde_cost_episodes_pedal.csv"))
+        m["CostPedalN"] = n(len(e))
+        m["CostPedalNFive"] = n(e.episode_id.str.contains("/w05/").sum())
+        m["CostPedalDrives"] = n(e.episode_id.str.split("/").str[:2].str.join("/").nunique())
     p = os.path.join(tabs, "cost_accuracy.csv")
     if os.path.exists(p):
         for r in pd.read_csv(p).to_dict("records"):
@@ -332,6 +389,176 @@ def cost_macros(m):
             d = t[t.method == meth]
             if len(d):
                 m[f"Robust{tag}MaxAbs"] = f"{d['median'].abs().max():.1f}"
+
+
+PROBE_TAG = {"sq2": "SqTwo", "sq5": "SqFive", "sq10": "SqTen", "sq20": "SqTwenty", "s1hz": "SOneHz", "s02hz": "SFifthHz",
+             "sn2": "SnTwo", "sn5": "SnFive", "sd05": "SdHalf", "pq1": "PqOne", "pq2": "PqTwo", "pq5": "PqFive", "v1hz": "VOneHz"}
+PROBE_METHOD = {"map_pf_steer__G3": "Pf", "map_beam_steer__G3": "Beam", "map_beam_none__G1": "BeamNone"}
+MILD_STEER = ["sq2", "sq5", "sq10", "s1hz", "sn2", "sn5"]        # the steering levels short of 20 deg and 0.2 Hz
+
+
+def robust_map_macros(m):
+    """RQ5 (plan v0.9 C): RobMap<Pf|Beam|BeamNone><Level><Test|FewShot><Stat> from tables/robustness_map_w05.csv
+    (run icde_probe against the clean icde_v11 rows on the same expected w05 windows). Route / RouteClean in %,
+    RouteDiff / Lo / Hi in percentage points (driver-clustered CI), Med / MedClean unpaired medians in m, PairMed / PairLo /
+    PairHi / PairMean paired statistics in m on the windows where both have an output, Changed / Same the share of windows
+    whose output differs / is identical, Lost / Gained the shares of windows whose route status flipped."""
+    p = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "robustness_map_w05.csv")
+    if not os.path.exists(p):
+        return
+    t = pd.read_csv(p)
+
+    def metres(x):
+        return "fail" if not np.isfinite(x) else (f"{x:.1f}" if abs(x) < 10 else n(x))
+
+    for r in t.to_dict("records"):
+        k = f"RobMap{PROBE_METHOD[r['stem']]}{PROBE_TAG[r['tag']]}{FOLD_TAG[r['fold']]}"
+        m[k + "Route"], m[k + "RouteClean"] = pct(r["route_pert"], 1), pct(r["route_clean"], 1)
+        for s, c in (("RouteDiff", "route_diff"), ("RouteDiffLo", "route_diff_lo"), ("RouteDiffHi", "route_diff_hi")):
+            m[k + s] = signed(100 * r[c])
+        m[k + "Med"], m[k + "MedClean"] = metres(r["median_pert"]), metres(r["median_clean"])
+        for s, c in (("PairMed", "median"), ("PairLo", "median_lo"), ("PairHi", "median_hi"), ("PairMean", "mean")):
+            m[k + s] = signed(r[c])
+        m[k + "Changed"], m[k + "Same"] = pct(r["changed"], 0), pct(1.0 - r["changed"], 0)
+        m[k + "Lost"], m[k + "Gained"] = pct(r["route_lost"], 1), pct(r["route_gained"], 1)
+        m[k + "N"] = n(r["n_expected"])
+    steer = t[t.stem != "map_beam_none__G1"]
+    mild = steer[steer.tag.isin(MILD_STEER)]
+    m["RobMapSteerMildMaxRouteAbs"] = f"{100 * mild.route_diff.abs().max():.1f}"
+    m["RobMapSteerMildMaxPairMedAbs"] = f"{mild['median'].abs().max():.1f}"
+    m["RobMapSteerMildMaxLost"] = pct(mild.route_lost.max(), 1)
+    pq1 = t[t.tag == "pq1"]
+    m["RobMapPqOneMaxRouteAbs"] = f"{100 * pq1.route_diff.abs().max():.1f}"
+    m["RobMapPqOneMaxPairMedAbs"] = f"{pq1['median'].abs().max():.1f}"
+    hard = steer[steer.tag.isin(["pq5", "s02hz"])]
+    m["RobMapHardMinRoute"] = pct(hard.route_pert.min(), 1)
+    m["RobMapNLevels"] = n(t.tag.nunique())
+    m["RobMapNRuns"] = n(len(t.drop_duplicates(["stem", "tag"])))
+
+
+def supp_macros(m):
+    """Plan v0.9 D: Supp<Tag><Med|Lo|Hi|Route|RouteLo|RouteHi|Fail|N|NDrives|NDrivers> from tables/supplement_summary.csv
+    (run icde_supp on the Controlled supplement's five-minute windows), plus SuppN / SuppDrives / SuppDrivers (the listed
+    windows) and SuppDrivesTotal / SuppDriversTotal (every supplement drive)."""
+    p = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "supplement_summary.csv")
+    if not os.path.exists(p):
+        return
+    t = pd.read_csv(p)
+    for r in t.to_dict("records"):
+        k = f"Supp{r['tag']}"
+        m[k + "Med"], m[k + "Lo"], m[k + "Hi"] = m_or_fail(r["median"]), m_or_fail(r["median_lo"]), m_or_fail(r["median_hi"])
+        m[k + "Route"], m[k + "RouteLo"], m[k + "RouteHi"] = pct(r["route"]), pct(r["route_lo"]), pct(r["route_hi"])
+        m[k + "Fail"], m[k + "N"], m[k + "NDrives"], m[k + "NDrivers"] = n(r["fail"]), n(r["n"]), n(r["n_drives"]), n(r["n_drivers"])
+    eps = pd.read_csv(os.path.join(paths.MANIFESTS, "icde_supplement_episodes.csv"))
+    man = pd.read_parquet(os.path.join(paths.MANIFESTS, "episode_manifest_v1.parquet"), columns=["episode_id", "driver", "drive", "fold", "admission"])
+    d = eps[eps.map_ok].merge(man, on="episode_id")
+    m["SuppN"], m["SuppDrives"], m["SuppDrivers"] = n(len(d)), n(d.drop_duplicates(["driver", "drive"]).shape[0]), n(d.driver.nunique())
+    s = man[(man.fold == "supplement") & (man.admission == "supplement")].drop_duplicates(["driver", "drive"])
+    m["SuppDrivesTotal"], m["SuppDriversTotal"] = n(len(s)), n(s.driver.nunique())
+
+
+def pct(x, d=0):
+    return "--" if x is None or not np.isfinite(x) else f"{100 * x:.{d}f}"
+
+
+SET_TAG = {"A": "A", "B": "B", "B'": "Bm", "C": "C", "D": "D", "P": "P"}
+TAU_TAG = {0.3: "Thirty", 0.4: "Forty", 0.5: "Fifty", 0.6: "Sixty", 0.7: "Seventy", 0.8: "Eighty", 0.9: "Ninety", 1.0: "Hundred"}
+BIN_TAG = {"0-1": "ZeroOne", "2-3": "TwoThree", "4-6": "FourSix", "7+": "SevenPlus", "all": "All"}
+
+
+def extra_macros(m):
+    """Plan v0.9 A and B (scripts/icde_extra.py): Comp<Set><Fold><stat>, CompMem<Set><Fold><Member><stat>,
+    CFail<Turns|Dens|All><Bin><stat>, DrvRoute<Method><Fold><stat>, Conf<Row><Hp|Hm><Win><Fold><stat>,
+    ConfThr<Row><Hp|Hm><Win><Fold><Tau><stat>, ConfProbOne<Method>Pct, Tax<Row><Hp|Hm><Fold><Fifty|Hundred><stat>."""
+    tabs = os.path.join(paths.GPS_DIR, "reports", "icde", "tables")
+    p = os.path.join(tabs, "complementarity_w05.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).to_dict("records"):
+            s = SET_TAG.get(r["set"].split(" ")[0])
+            if s is None or r["fold"] not in FOLD_TAG:
+                continue
+            k = f"Comp{s}{FOLD_TAG[r['fold']]}"
+            m[k + "N"], m[k + "NDrivers"] = n(r["n"]), n(r["n_drivers"])
+            m[k + "OracleMed"] = m_or_fail(r["oracle_ade_median"])
+            m[k + "OracleRoutePct"] = pct(r["oracle_route"])
+            m[k + "AllFailPct"], m[k + "AllFailLo"], m[k + "AllFailHi"] = pct(r["all_fail_share"], 1), pct(r["all_fail_lo"], 1), pct(r["all_fail_hi"], 1)
+            m[k + "NAllFail"] = n(r["n_all_fail"])
+            m[k + "BestSingle"] = str(r["best_single"]).replace("_", " ")
+            m[k + "BestSingleMed"] = m_or_fail(r["best_single_median"])
+            if isinstance(r.get("reference"), str) and r["reference"]:
+                m[k + "RefMed"] = m_or_fail(r["ref_ade_median"])
+                m[k + "RefRoutePct"] = pct(r["ref_route"])
+                m[k + "RouteGainPct"], m[k + "RouteGainLo"], m[k + "RouteGainHi"] = pct(r["route_gain"]), pct(r["route_gain_lo"]), pct(r["route_gain_hi"])
+                m[k + "ComplPct"], m[k + "ComplLo"], m[k + "ComplHi"] = pct(r["complementary_share"]), pct(r["complementary_lo"]), pct(r["complementary_hi"])
+                for stat, col in (("AdeGainMed", "ade_gain_median"), ("AdeGainLo", "ade_gain_lo"), ("AdeGainHi", "ade_gain_hi"),
+                                  ("AdeGainMean", "ade_gain_mean"), ("AdeGainMeanLo", "ade_gain_mean_lo"), ("AdeGainMeanHi", "ade_gain_mean_hi")):
+                    if np.isfinite(r.get(col, np.nan)):
+                        m[k + stat] = signed(r[col])
+                m[k + "NBothFinite"] = n(r["n_both_finite"])
+    p = os.path.join(tabs, "complementarity_members_w05.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).to_dict("records"):
+            s = SET_TAG.get(r["set"].split(" ")[0])
+            if s is None or r["fold"] not in FOLD_TAG:
+                continue
+            k = f"CompMem{s}{FOLD_TAG[r['fold']]}{camel(r['member'])}"
+            m[k + "Med"] = m_or_fail(r["median_ade"])
+            m[k + "RoutePct"] = pct(r["route"])
+            m[k + "AttainPct"] = pct(r["share_attains_oracle"])
+            m[k + "Fail"] = n(r["n_fail"])
+    p = os.path.join(tabs, "common_failure_strata_w05.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).to_dict("records"):
+            kind = {"reference turns": "Turns", "density": "Dens", "all": "All"}[r["stratum"]]
+            b = BIN_TAG.get(r["level"], r["level"].split(" ")[0].capitalize())
+            k = f"CFail{kind}{b}"
+            m[k + "Pct"], m[k + "Lo"], m[k + "Hi"] = pct(r["all_fail_share"], 1), pct(r["all_fail_lo"], 1), pct(r["all_fail_hi"], 1)
+            m[k + "N"], m[k + "NDrivers"] = n(r["n"]), n(r["n_drivers"])
+            m[k + "OracleRoutePct"], m[k + "RefRoutePct"] = pct(r["oracle_route"]), pct(r["ref_route"])
+    p = os.path.join(tabs, "driver_route_w05.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).to_dict("records"):
+            if r["fold"] not in FOLD_TAG:
+                continue
+            k = f"DrvRoute{camel(r['method'])}{FOLD_TAG[r['fold']]}"
+            for stat, col in (("QTen", "q10"), ("QTwentyFive", "q25"), ("Med", "q50"), ("QSeventyFive", "q75"), ("QNinety", "q90"),
+                              ("BelowHalfPct", "share_drivers_below_half"), ("ZeroPct", "share_drivers_zero"), ("PooledPct", "pooled_route")):
+                m[k + stat] = pct(r[col])
+            m[k + "NDrivers"], m[k + "NDriversGeFive"], m[k + "NDriversLtFive"] = n(r["n_drivers"]), n(r["n_drivers_ge5"]), n(r["n_drivers_lt5"])
+    p = os.path.join(tabs, "confidence_w05_w15.csv")
+    if os.path.exists(p):
+        row_tag = {"map_beam_steer__G3": "Beam", "map_beam_none__G1": "BeamNone", "dewri_hp__G1": "DewriHp", "dewri__G1": "Dewri",
+                   "elastic_pathing_hp__G1": "EpHp", "elastic_pathing__G1": "Ep"}
+        for r in pd.read_csv(p).to_dict("records"):
+            rt = row_tag.get(r["stem"])
+            if rt is None:
+                continue
+            if r["kind"] == "prob_only":
+                m[f"ConfProbOne{rt}Pct"] = pct(r["share_prob_eq_1"])
+                continue
+            if r["fold"] not in FOLD_TAG or r["win"] not in WIN_TAG:
+                continue
+            k = f"Conf{rt}{'Hm' if r['protocol'].endswith('Hm') else 'Hp'}{WIN_TAG[r['win']]}{FOLD_TAG[r['fold']]}"
+            if r["kind"] == "summary":
+                m[k + "Auroc"], m[k + "AurocLo"], m[k + "AurocHi"] = f"{r['auroc']:.2f}", f"{r['auroc_lo']:.2f}", f"{r['auroc_hi']:.2f}"
+                m[k + "Rho"] = f"{r['spearman_ade']:.2f}".replace("-", "$-$")
+                m[k + "ProbOnePct"], m[k + "ProbMed"], m[k + "ProbQTwentyFive"] = pct(r["share_prob_eq_1"]), f"{r['prob_median']:.2f}", f"{r['prob_q25']:.2f}"
+                m[k + "NOut"], m[k + "NFail"], m[k + "N"] = n(r["n_output"]), n(r["n_fail"]), n(r["n_expected"])
+            elif r["kind"] == "threshold" and r["tau"] in TAU_TAG:
+                kk = k + TAU_TAG[r["tau"]]
+                m[kk + "CovPct"], m[kk + "RoutePct"] = pct(r["coverage"]), pct(r["route_rate_accepted"])
+                m[kk + "RouteLo"], m[kk + "RouteHi"] = pct(r["route_rate_lo"]), pct(r["route_rate_hi"])
+                m[kk + "ErrPct"], m[kk + "NAcc"] = pct(r["error_share_accepted"]), n(r["n_accepted"])
+                m[kk + "Med"] = m_or_fail(r["median_ade_accepted"])
+    p = os.path.join(tabs, "window_taxonomy_w05.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).to_dict("records"):
+            if r["fold"] not in FOLD_TAG:
+                continue
+            thr = {50.0: "Fifty", 100.0: "Hundred"}[float(r["threshold_m"])]
+            k = f"Tax{camel(r['stem'].split('__')[0])}{'Hm' if r['protocol'].endswith('Hm') else 'Hp'}{FOLD_TAG[r['fold']]}{thr}"
+            m[k + "NoOutPct"], m[k + "NoCandPct"] = pct(r["no_output"]), pct(r["no_candidate"])
+            m[k + "RankMissPct"], m[k + "TopOneOkPct"], m[k + "N"] = pct(r["ranking_miss"]), pct(r["top1_ok"]), n(r["n"])
 
 
 SIG_ADDED = {"pedals | speed": "PedSpeed", "steering | speed": "SteerSpeed", "pedals | speed+steering": "PedAll",

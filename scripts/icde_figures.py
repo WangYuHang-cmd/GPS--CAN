@@ -266,6 +266,71 @@ def fig_topk():
     save(fig, "fig_topk_w05")
 
 
+PROBE_FIG = {"steer": [("sq2", "2°"), ("sq5", "5°"), ("sq10", "10°"), ("sq20", "20°"), ("s1hz", "1 Hz"), ("s02hz", "0.2 Hz"),
+                       ("sn2", "±2°"), ("sn5", "±5°"), ("sd05", "0.5 s\ndelay")],
+             "speed": [("pq1", "1 m/s"), ("pq2", "2 m/s"), ("pq5", "5 m/s"), ("v1hz", "1 Hz")]}
+
+
+def fig_robust():
+    """RQ5 (plan v0.9 C, run icde_probe): change in the five-minute route recovery rate of the FIXED map attacks under
+    degraded inputs, against the clean icde_v11 run on the same expected windows, with 95 % driver-clustered CIs; filled
+    markers test, hollow few-shot. Every level of the pre-registered grid is shown. The speed-only beam is unchanged by
+    steering levels (its clean rows are the reference) and appears on the speed levels only; the 0.5 s delay is a timing
+    probe and sits apart from the quantisation / rate / noise levels."""
+    from matplotlib.lines import Line2D
+    rc()
+    f = os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "robustness_map_w05.csv")
+    if not os.path.exists(f):
+        print("no robustness_map table yet")
+        return
+    t = pd.read_csv(f)
+    series = [("map_pf_steer__G3", "PF, steering", STEER, "o"), ("map_beam_steer__G3", "beam, steering", STEER, "s"),
+              ("map_beam_none__G1", "beam, speed only", SPEED, "D")]
+    fig, axes = plt.subplots(2, 1, figsize=(3.4, 1.7), gridspec_kw=dict(hspace=1.0))
+    rows, handles = [], {}
+    for ax, (sig, title) in zip(axes, (("steer", "steering-wheel angle degraded (delay: timing probe)"),
+                                       ("speed", "speed degraded"))):
+        levels = PROBE_FIG[sig]
+        tags = [l[0] for l in levels]
+        ax.axhline(0, color=INK2, lw=0.7, zorder=1)
+        present = [s for s in series if ((t.stem == s[0]) & t.tag.isin(tags)).any()]
+        for j, (stem, lab, col, mk) in enumerate(present):
+            for fi, fold in enumerate(("test", "few_shot_heldout")):
+                xs, ys, lo, hi = [], [], [], []
+                for i, tag in enumerate(tags):
+                    r = t[(t.stem == stem) & (t.tag == tag) & (t.fold == fold)]
+                    if r.empty:
+                        continue
+                    r = r.iloc[0]
+                    xs.append(i + (j - (len(present) - 1) / 2) * 0.3 + (fi - 0.5) * 0.12)
+                    ys.append(100 * r.route_diff)
+                    lo.append(100 * r.route_diff_lo)
+                    hi.append(100 * r.route_diff_hi)
+                    rows.append(dict(panel=sig, stem=stem, fold=fold, tag=tag, route_diff_pp=100 * r.route_diff, lo_pp=100 * r.route_diff_lo,
+                                     hi_pp=100 * r.route_diff_hi, route_pert=r.route_pert, route_clean=r.route_clean))
+                ys, lo, hi = (np.asarray(v, dtype=float) for v in (ys, lo, hi))
+                h = ax.errorbar(xs, ys, yerr=[ys - lo, hi - ys], fmt=mk, color=col, mfc=col if fold == "test" else "white", mec=col,
+                                ms=3.2, lw=0.7, capsize=0, ls="none", zorder=3)
+                if fold == "test":
+                    handles.setdefault(lab, h)
+        ax.set_xticks(range(len(levels)))
+        ax.set_xticklabels([l[1] for l in levels], fontsize=6.5)
+        ax.set_xlim(-0.6, len(levels) - 0.4)
+        ax.set_ylim(-11, 4)
+        ax.set_title(title, fontsize=7, loc="left")
+        ax.grid(axis="x", visible=False)
+        ax.set_ylabel("route recovery\nvs clean (pp)", fontsize=7)
+        if sig == "steer":
+            ax.axvline(len(levels) - 1.5, color=INK2, lw=0.6, ls=":")
+    key = [Line2D([], [], marker="o", color=INK2, mfc=INK2, ls="none", ms=3.2, label="test"),
+           Line2D([], [], marker="o", color=INK2, mfc="white", ls="none", ms=3.2, label="few-shot")]
+    fig.legend(list(handles.values()) + key, list(handles.keys()) + [k.get_label() for k in key], loc="lower center", ncol=3,
+               bbox_to_anchor=(0.5, -0.36), fontsize=6, handletextpad=0.3, columnspacing=0.8)
+    os.makedirs(DATA, exist_ok=True)
+    pd.DataFrame(rows).to_csv(os.path.join(DATA, "fig_robust.csv"), index=False)
+    save(fig, "fig_robust_w05")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="icde_v11")
@@ -278,6 +343,8 @@ def main():
         fig_horizon()
     if "topk" in args.figs:
         fig_topk()
+    if "robust" in args.figs:
+        fig_robust()
     print("figures ->", FIG)
 
 

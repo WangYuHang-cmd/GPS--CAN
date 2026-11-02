@@ -74,6 +74,7 @@ def main():
     ap.add_argument("--folds", nargs="+", default=["val", "test", "few_shot_heldout"])
     ap.add_argument("--max-tiles-per-pass", type=int, default=150)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force", action="store_true", help="overwrite an existing manifests/map_tiles_v2.csv (the published tile list)")
     args = ap.parse_args()
     t_start = time.time()
     need, n_ep = needed_tiles(args.folds)
@@ -152,8 +153,14 @@ def main():
                          kind="unmapped_land" if t in unmapped else ("sea" if t in sea else "extract"),
                          source_v1=v1.get(n, ""), source_v2=src.source.get(n, ""), pbf_md5=src.pbf_md5.get(n, ""), snapshot_date=src.snapshot_date.get(n, "")))
     out = pd.DataFrame(rows)
+    dst = MAN_V2
+    if os.path.exists(MAN_V2) and not args.force:
+        # the published tile list (md5 and snapshot date per tile) is what makes the map reproducible; a re-cut from
+        # today's extracts is a different map, so it is written next to it unless --force is given
+        dst = MAN_V2[:-4] + ".new.csv"
+        print(f"{MAN_V2} exists: writing {dst} instead (pass --force to overwrite the published tile list)", flush=True)
     out[["tile", "lat_min", "lon_min", "kind", "source_v2", "snapshot_date", "pbf_md5", "n_ways_v2", "n_nodes_v2", "n_restrictions_v2"]].rename(
-        columns={"source_v2": "source", "n_ways_v2": "n_ways", "n_nodes_v2": "n_nodes", "n_restrictions_v2": "n_restrictions"}).to_csv(MAN_V2, index=False)
+        columns={"source_v2": "source", "n_ways_v2": "n_ways", "n_nodes_v2": "n_nodes", "n_restrictions_v2": "n_restrictions"}).to_csv(dst, index=False)
     os.makedirs(os.path.dirname(AUDIT), exist_ok=True)
     out["changed"] = out.n_ways_v1 != out.n_ways_v2
     out["v1_truncated"] = (out.n_ways_v2 > 0) & (out.n_ways_v1 < 0.9 * out.n_ways_v2)
@@ -161,7 +168,7 @@ def main():
     print(f"tiles {len(out)}: changed {int(out.changed.sum())}, v1 truncated (< 90% of v2 ways) {int(out.v1_truncated.sum())}, "
           f"episode-weighted truncated share {out[out.v1_truncated].n_episodes.sum() / max(out.n_episodes.sum(), 1):.3f}; "
           f"unmapped land {len(unmapped)}, sea {len(sea)}; {time.time() - t_start:.0f}s", flush=True)
-    print("written", MAN_V2, AUDIT, flush=True)
+    print("written", dst, AUDIT, flush=True)
 
 
 if __name__ == "__main__":

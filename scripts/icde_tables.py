@@ -160,8 +160,13 @@ def main():
     if "cost" in args.extras:
         print(cost_table().round(3).to_string())
         print(cost_accuracy_table().round(2).to_string())
+        if os.path.isdir(os.path.join(COST_LOG, "icde_cost_pedal")):
+            print(cost_table("icde_cost_pedal", "cost_pedal.csv").round(3).to_string())
+            print(cost_accuracy_table("icde_cost_pedal", "icde_cost_episodes_pedal.csv", "cost_accuracy_pedal.csv").round(2).to_string())
     if "robust" in args.extras:
         print(robust_table(ep, man).round(2).to_string())
+    if "robust_map" in args.extras:
+        print(robust_map_table(ep, man).round(3).to_string())
     rows = []
     for win in args.wins:
         for key, stem, proto, label, fam, req, hp in MAIN:
@@ -500,17 +505,74 @@ def robust_table(ep, man, n_boot=1000):
     return t
 
 
+# Plan v0.9 item C: sensitivity of the fixed map attacks to degraded CAN inputs (run icde_probe, scripts/run_icde_probe.sh).
+# Grid fixed before the first run; every level is reported. (tag, description, degraded signal)
+PROBE_LEVELS = [("sq2", "steering quantised to 2 deg", "steer"), ("sq5", "steering quantised to 5 deg", "steer"),
+                ("sq10", "steering quantised to 10 deg", "steer"), ("sq20", "steering quantised to 20 deg", "steer"),
+                ("s1hz", "steering at 1 Hz", "steer"), ("s02hz", "steering at 0.2 Hz", "steer"),
+                ("sn2", "steering offset noise 2 deg", "steer"), ("sn5", "steering offset noise 5 deg", "steer"),
+                ("sd05", "steering delayed 0.5 s", "steer"),
+                ("pq1", "speed quantised to 1 m/s", "speed"), ("pq2", "speed quantised to 2 m/s", "speed"),
+                ("pq5", "speed quantised to 5 m/s", "speed"), ("v1hz", "speed at 1 Hz", "speed")]
+PROBE_ROWS = [("map_pf_steer__G3", "O-M-Hp", "G3", "map PF, steering"), ("map_beam_steer__G3", "F-M-Hp", "G3", "map beam, steering"),
+              ("map_beam_none__G1", "F-M-Hp", "G1", "map beam, speed only")]
+
+
+def robust_map_table(ep, man, run_probe="icde_probe", n_boot=1000):
+    """RQ5 (v0.9 C): each probe row against the clean icde_v11 row on the row's expected w05 episodes (fixed before
+    outputs): failures per side, medians with +inf, route shares, the route difference with a driver-clustered CI
+    (failures count as not recovered) and the paired ADE statistics on the episodes where both have an output."""
+    f = os.path.join(paths.SCORES, run_probe, "episodes_all.parquet")
+    if not os.path.exists(f):
+        return pd.DataFrame()
+    pr = pd.read_parquet(f, columns=["episode_id", "method", "protocol", "ade", "route_ok"])
+    rows = []
+
+    def vals(df, stem, proto, ids):
+        g = df[(df.method == stem) & (df.protocol == proto)].drop_duplicates("episode_id").set_index("episode_id")
+        a = g.ade.reindex(ids).to_numpy(dtype=float)
+        rt = g.route_ok.reindex(ids).astype(float).fillna(0.0).to_numpy()
+        return np.where(np.isnan(a), np.inf, a), rt
+
+    for stem, proto, req, label in PROBE_ROWS:
+        base, grp = stem.split("__")
+        for tag, what, sig in PROBE_LEVELS:
+            pert = f"{base}_{tag}__{grp}"
+            if not ((pr.method == pert) & (pr.protocol == proto)).any():
+                continue
+            for fold in FOLDS:
+                exp = expected(man, "w05", fold, proto, req, False)
+                ids, drv = exp.episode_id.to_numpy(), exp.driver.to_numpy()
+                a, ra = vals(pr, pert, proto, ids)
+                b, rb = vals(ep, stem, proto, ids)
+                r = stats.paired(a, b, drv, n_boot)
+                rd, (rlo, rhi) = stats.mean_ci(ra - rb, drv, n_boot)
+                both_fail = np.isinf(a) & np.isinf(b)
+                changed = ~np.isclose(a, b, rtol=0.0, atol=1e-3)      # the output differs (a path method often returns the same path)
+                rows.append(dict(method=label, stem=stem, protocol=proto, perturbation=what, tag=tag, signal=sig, fold=fold,
+                                 n_expected=len(ids), fail_clean=int(np.isinf(b).sum()), fail_pert=int(np.isinf(a).sum()),
+                                 median_clean=float(np.median(b)), median_pert=float(np.median(a)),
+                                 route_clean=float(rb.mean()), route_pert=float(ra.mean()), route_diff=rd, route_diff_lo=rlo, route_diff_hi=rhi,
+                                 changed=float(changed.mean()), route_lost=float(np.mean((rb == 1) & (ra == 0))), route_gained=float(np.mean((rb == 0) & (ra == 1))),
+                                 win_pert_with_fail=float(np.mean((a < b)[~both_fail])) if (~both_fail).any() else np.nan, **r))
+    t = pd.DataFrame(rows)
+    t.to_csv(os.path.join(OUT, "robustness_map_w05.csv"), index=False)
+    return t
+
+
 COST_LOG = paths.LOGS
 
 
-def cost_table():
-    """RQ5: run icde_cost (scripts/run_icde_cost.sh: one worker, the same 92 validation episodes for every method).
+def cost_table(run="icde_cost", out_csv="cost.csv"):
+    """RQ5: run icde_cost (scripts/run_icde_cost.sh: one worker, the same 92 validation episodes for every method) and
+    run icde_cost_pedal (scripts/run_icde_cost_pedal.sh: the pedal-valid validation subset CAN-Trace can run on, with
+    the methods it is compared with on the same windows -> cost_pedal.csv).
     Per-episode inference seconds from the runner's timing files (graph build and drive loading listed separately) over
     every attempted episode, a failed one with the time the method spent before giving up (column ok = 0; timing files
     written before 10/31 have no such column and record outputs only: those runs had no failure on this subset),
     peak resident memory and wall time of the whole run from /usr/bin/time -v."""
     rows = []
-    for tf in sorted(glob.glob(os.path.join(COST_LOG, "icde_cost", "*.time"))):
+    for tf in sorted(glob.glob(os.path.join(COST_LOG, run, "*.time"))):
         tag = os.path.basename(tf)[:-5]
         txt = open(tf).read()
         rss = re.search(r"Maximum resident set size \(kbytes\): (\d+)", txt)
@@ -519,14 +581,15 @@ def cost_table():
         if wall:
             parts = [float(x) for x in wall.group(1).split(":")]
             secs = sum(v * 60 ** k for k, v in enumerate(reversed(parts)))
-        timing = glob.glob(os.path.join(paths.PREDS, "icde_cost", "*", "*.timing.csv"))
-        out = open(os.path.join(COST_LOG, "icde_cost", tag + ".out")).read() if os.path.exists(os.path.join(COST_LOG, "icde_cost", tag + ".out")) else ""
+        timing = glob.glob(os.path.join(paths.PREDS, run, "*", "*.timing.csv"))
+        out = open(os.path.join(COST_LOG, run, tag + ".out")).read() if os.path.exists(os.path.join(COST_LOG, run, tag + ".out")) else ""
         stem = re.search(r"-> \S+/([^/]+)\.part0\.parquet", out)
         t = pd.DataFrame()
-        if stem:
-            f = [x for x in timing if os.path.basename(x).startswith(stem.group(1) + ".part")]
-            if f:
-                t = pd.read_csv(f[0])
+        f = [x for x in timing if os.path.basename(x).startswith(stem.group(1) + ".part")] if stem else []
+        if not f:                                   # no prediction file was written (every episode failed): the timing file still exists
+            f = [x for x in timing if os.path.basename(x).startswith(tag + "__")]
+        if f:
+            t = pd.read_csv(f[0])
         row = dict(tag=tag, peak_rss_gb=int(rss.group(1)) / 1048576 if rss else np.nan, wall_s=secs)
         if len(t):
             e = t[~t.protocol.str.startswith("_")].copy()
@@ -541,16 +604,19 @@ def cost_table():
             row["drive_load_median_s"] = float(t[t.protocol == "_load"].secs.median())
         rows.append(row)
     c = pd.DataFrame(rows)
-    c.to_csv(os.path.join(OUT, "cost.csv"), index=False)
+    c.to_csv(os.path.join(OUT, out_csv), index=False)
     return c
 
 
-def cost_accuracy_table():
+def cost_accuracy_table(run="icde_cost", ids_csv="icde_cost_episodes_valhalla.csv", out_csv="cost_accuracy.csv"):
     """RQ5 accuracy on the same subset (run icde_cost scored with scripts/score.py --run icde_cost --eligible-only --folds val
-    --episodes-file manifests/icde_cost_episodes_valhalla.csv): failure-aware median ADE (+inf for an episode without
-    output) and route share (0 for it) per method, protocol and window."""
-    e = pd.read_parquet(os.path.join(paths.SCORES, "icde_cost", "episodes_all.parquet"), columns=["episode_id", "method", "protocol", "win", "ade", "route_ok"])
-    ids = pd.read_csv(os.path.join(paths.MANIFESTS, "icde_cost_episodes_valhalla.csv")).episode_id
+    --episodes-file manifests/icde_cost_episodes_valhalla.csv; the pedal subset likewise with run icde_cost_pedal):
+    failure-aware median ADE (+inf for an episode without output) and route share (0 for it) per method, protocol and window."""
+    f = os.path.join(paths.SCORES, run, "episodes_all.parquet")
+    if not os.path.exists(f):
+        return pd.DataFrame()
+    e = pd.read_parquet(f, columns=["episode_id", "method", "protocol", "win", "ade", "route_ok"])
+    ids = pd.read_csv(os.path.join(paths.MANIFESTS, ids_csv)).episode_id
     rows = []
     for (m, p), g in e.groupby(["method", "protocol"]):
         for w, gg in g.groupby("win"):
@@ -561,7 +627,7 @@ def cost_accuracy_table():
             rows.append(dict(method=m, protocol=p, win=w, n=len(a), fail=int(np.isinf(a).sum()), ade_median=float(np.median(a)),
                              route=float(gg.route_ok.reindex(sel).fillna(0).astype(float).mean())))
     t = pd.DataFrame(rows)
-    t.to_csv(os.path.join(OUT, "cost_accuracy.csv"), index=False)
+    t.to_csv(os.path.join(OUT, out_csv), index=False)
     return t
 
 
