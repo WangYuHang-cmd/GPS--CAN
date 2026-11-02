@@ -274,7 +274,7 @@ PROBE_FIG = {"steer": [("sq2", "2°"), ("sq5", "5°"), ("sq10", "10°"), ("sq20"
 def fig_robust():
     """RQ5 (plan v0.9 C, run icde_probe): change in the five-minute route recovery rate of the FIXED map attacks under
     degraded inputs, against the clean icde_v11 run on the same expected windows, with 95 % driver-clustered CIs; filled
-    markers test, hollow few-shot. Every level of the pre-registered grid is shown. The speed-only beam is unchanged by
+    markers test, hollow few-shot. Every level of the grid fixed before the first run is shown. The speed-only beam is unchanged by
     steering levels (its clean rows are the reference) and appears on the speed levels only; the 0.5 s delay is a timing
     probe and sits apart from the quantisation / rate / noise levels."""
     from matplotlib.lines import Line2D

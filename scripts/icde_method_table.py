@@ -40,7 +40,8 @@ def main():
     t.to_csv(os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "methods.csv"), index=False)
     lines = [r"\begin{table*}[t]\centering\footnotesize\setlength{\tabcolsep}{3pt}", r"\caption{Methods and the information they use. $p_0$: start position, "
              r"$\theta_0$: start heading. Online methods answer each query from the signals up to that time. Map: ``OSM disc'' is the "
-             r"episode's visible disc (Section~\ref{sec:problem}).}\label{tab:methods}",
+             r"episode's visible disc (Section~\ref{sec:problem}). DR: dead reckoning, PF: particle filter, GRU: gated recurrent unit, "
+             r"S1 to S4: signal sets (Section~\ref{sec:methods}).}\label{tab:methods}",
              r"\begin{tabular}{llllllll}\toprule", " & ".join(r"\textbf{" + c + "}" for c in cols) + r" \\\midrule"]
     for r in ROWS:
         lines.append(" & ".join(r) + r" \\")
