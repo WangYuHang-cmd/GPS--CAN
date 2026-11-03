@@ -30,6 +30,10 @@ def main():
     m["NBrands"] = n(dr.platform.astype(str).str.split("_").str[0].nunique())
     full = e[e.win == "full"]
     m["NHours"] = n(full.dur_s.sum() / 3600.0)
+    gm = pd.read_csv(paths.GPS_MANIFEST)                                  # the released paired corpus (GNSS files present)
+    rel = gm[(gm.status == "ok") & (gm["set"] == "main")]
+    m["NReleaseDrives"], m["NReleaseDrivers"] = n(len(rel)), n(rel.driver.nunique())
+    m["NReleaseHours"] = n((rel.trim_hi_s - rel.trim_lo_s).clip(lower=0).sum() / 3600.0)
     m["NKm"] = n(full.path_len_m.sum() / 1000.0)
     m["NDrivesQcom"] = n((dr.gps_source == "qcomdiag").sum())
     m["NDrivesUblox"] = n(dr.gps_source.astype(str).str.contains("ublox").sum())
