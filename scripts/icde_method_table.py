@@ -38,7 +38,7 @@ def main():
     t = pd.DataFrame(ROWS, columns=cols)
     os.makedirs(os.path.join(paths.GPS_DIR, "reports", "icde", "tables"), exist_ok=True)
     t.to_csv(os.path.join(paths.GPS_DIR, "reports", "icde", "tables", "methods.csv"), index=False)
-    lines = [r"\begin{table*}[t]\centering\footnotesize\setlength{\tabcolsep}{3pt}", r"\caption{Methods and the information they use. $p_0$: start position, "
+    lines = [r"\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}", r"\caption{Methods and the information they use. $p_0$: start position, "
              r"$\theta_0$: start heading. Online methods answer each query from the signals up to that time. Map: ``OSM disc'' is the "
              r"episode's visible disc (Section~\ref{sec:problem}). DR: dead reckoning, PF: particle filter, GRU: gated recurrent unit, "
              r"S1 to S4: signal sets (Section~\ref{sec:methods}).}\label{tab:methods}",

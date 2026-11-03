@@ -77,7 +77,7 @@ def load(run):
     man["map_ok"] = man.map_ok.fillna(False).astype(bool)
     man["pedal_ok"] = man.gas == "valid"
     skipped = {}
-    for f in glob.glob(os.path.join(paths.PREDS, run, "*", "*.skipped.csv")):
+    for f in glob.glob(os.path.join(paths.PREDS, run, "*", "*.skipped.csv")) + glob.glob(os.path.join(paths.SCORES, run, "skipped", "*", "*.skipped.csv")):
         proto = os.path.basename(os.path.dirname(f))
         stem = os.path.basename(f).split(".part")[0]
         s = pd.read_csv(f)
@@ -217,9 +217,9 @@ def main_rows(t):
     """Markdown lines and LaTeX lines for the rows of one window."""
     lines = ["| family | method | test n (fail) | test median ADE [CI] | test drv-eq | test c100 | test route | few-shot n (fail) | few-shot median ADE [CI] | few-shot drv-eq | few-shot c100 | few-shot route |",
              "|" + "---|" * 12]
-    tex = [r"\begin{table*}[t]\centering\footnotesize\setlength{\tabcolsep}{2.5pt}", r"\caption{Five-minute windows, test and few-shot drivers (benchmark v1.1). Median ADE in metres with "
+    tex = [r"\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{2.5pt}", r"\caption{Five-minute windows, test and few-shot drivers, benchmark v1.1. Median ADE in metres with "
            r"95\% CI from a driver-resampling bootstrap; drv-eq: median of per-driver medians; c100: share of seconds within 100\,m; "
-           r"route: path recall at 50\,m $\ge 0.8$ (not an exact-route or destination criterion); fail: the median episode has no output "
+           r"route: path recall at 50\,m $\ge 0.8$; fail: the median episode has no output "
            r"(failures count as $+\infty$ in ADE and 0 in c100 and route). Learned rows: every statistic, including the CI bounds, is "
            r"the mean over three training seeds; SD of the median over seeds (test/few-shot, m): SEEDSD.}\label{tab:main}", r"\begin{tabular}{llrrrrrrrr}\toprule",
            r" & & \multicolumn{4}{c}{test} & \multicolumn{4}{c}{few-shot} \\\cmidrule(lr){3-6}\cmidrule(lr){7-10}",

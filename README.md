@@ -80,10 +80,20 @@ scripts/run_icde_cost.sh; scripts/run_icde_cost_pedal.sh  # cost study, one work
 scripts/run_icde_probe.sh                                 # degraded-input sensitivity sweep (run icde_probe, fixed grid)
 python scripts/score.py --run icde_v11 --manifest $CANTRAJ_MANIFESTS/episode_manifest_v1.parquet --eligible-only \
     --folds test few_shot_heldout --workers 2 --resume
-python scripts/icde_tables.py --extras pairs topk signal cohort cost robust robust_map   # reports/icde/tables/*.csv, main_board.tex
-python scripts/icde_area_check.py && python scripts/icde_extra.py                         # map-extent checks; complementarity, confidence
-python scripts/icde_figures.py --figs cdf topk horizon && python scripts/icde_macros.py && python scripts/registry.py
+python scripts/icde_tables.py --extras a3 pairs topk signal cohort cost robust robust_map   # reports/icde/tables/*.csv, main_board.tex
+python scripts/icde_area_check.py                         # map-extent check (reads the GNSS reference): area_coverage.csv, area_check_episodes.csv
+python scripts/icde_extra.py && python scripts/icde_extra.py --what supp   # complementarity, strata, confidence, taxonomy; supplement
+python scripts/icde_spy_dewri_diag.py && python scripts/failure_analysis.py --run icde_v11 --tag v11 --tiles-dir $CANTRAJ_BENCH/maps/tiles_v2
+python scripts/icde_figures.py --figs cdf topk horizon robust && python scripts/icde_macros.py && python scripts/registry.py
 ```
+
+Rebuilding the tables from the published per-episode scores (no method rerun): copy the published `tables/` and `reports/`
+of the package into `reports/icde/` first, because several scripts read other scripts' outputs, then run the five table
+lines above. Everything is regenerated from the scores except what needs the run outputs or the training: `cost*.csv`
+(the runner's timing and `/usr/bin/time` logs; machine-specific), `can_trace_failure_mode.csv` (CAN-Trace's trace graphs),
+`sig_signal_use.csv` (the signal-use test of the trained learner), `T7a_lost_road_timing_v11.csv` (per-second errors) and
+the run registry (`meta.json` of every run); `confidence_w05_w15.csv` reads the published `scores/icde_v11/top1_scores.csv`
+when the prediction files are absent (`scripts/export_top1_scores.py` writes it from them).
 
 `run_icde_seq.sh` is the single sequential chain that produced the published runs (memory gate, 2 to 5 workers per
 step); every run writes `meta.json` (benchmark version, manifest sha256, tile list md5, code sha, seed) that

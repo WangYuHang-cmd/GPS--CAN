@@ -197,10 +197,18 @@ def driver_route_table(ep, man):
     return t
 
 
+TOP1_TABLE = os.path.join(paths.SCORES, "icde_v11", "top1_scores.csv")   # thin published copy (scripts/export_top1_scores.py)
+
+
 def top1_scores(stem, proto):
-    """Top-1 candidate score per episode from the prediction file (constant over t), read row group by row group."""
+    """Top-1 candidate score per episode from the prediction file (constant over t), read row group by row group;
+    without the prediction files (the public package) the published thin table scores/icde_v11/top1_scores.csv."""
     f = os.path.join(paths.PREDS, "icde_v11", proto, f"{stem}.part0.parquet")
     if not os.path.exists(f):
+        if os.path.exists(TOP1_TABLE):
+            t = pd.read_csv(TOP1_TABLE)
+            t = t[(t.stem == stem) & (t.protocol == proto)]
+            return t.set_index("episode_id").prob.astype(float)
         return pd.Series(dtype=float)
     pf = pq.ParquetFile(f)
     parts = []
@@ -272,7 +280,8 @@ def confidence_table(ep, man, n_boot):
             rows.append(dict(stem=stem, protocol=proto, win="all", fold="all", kind="prob_only", n_output=len(sc), share_prob_eq_1=float(np.mean(sc >= 0.999)),
                              prob_median=float(sc.median())))
     t = pd.DataFrame(rows)
-    t.to_csv(os.path.join(OUT, "confidence_w05_w15.csv"), index=False)
+    if len(t):                                        # no candidate scores at all: keep the published table, do not write an empty one
+        t.to_csv(os.path.join(OUT, "confidence_w05_w15.csv"), index=False)
     return t
 
 
@@ -370,7 +379,10 @@ def main():
         print(driver_route_table(ep, man).round(3).to_string())
     if "conf" in args.what:
         t = confidence_table(ep, man, args.n_boot)
-        print(t[t.kind != "threshold"].round(3).to_string())
+        if len(t):
+            print(t[t.kind != "threshold"].round(3).to_string())
+        else:
+            print("confidence table: no candidate scores (neither prediction files nor scores/icde_v11/top1_scores.csv); kept as published")
     if "tax" in args.what:
         print(window_taxonomy(ep, man).round(3).to_string())
 
