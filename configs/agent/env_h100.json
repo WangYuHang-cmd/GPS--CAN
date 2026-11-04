@@ -13,7 +13,7 @@
     "uv": false
   },
   "gpu": {
-    "name": "NVIDIA H100 80GB HBM3",
+    "name": "H100 80GB HBM3",
     "memory_total_mib": 81559,
     "memory_used_mib_at_check": 0,
     "other_processes_at_check": 0,
