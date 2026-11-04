@@ -30,6 +30,7 @@ FOLDS = [("test", "test"), ("few_shot_heldout", "few-shot")]
 FOLD_LABEL = {"test": "test", "few_shot_heldout": "few-shot", "val": "validation"}
 A_STEM, A_RUN = "map_beam_steer__G3", "icde_v11"
 B_STEM = "selector__G3"
+TAG, SUFFIX = "agent_qwen3", ""
 
 
 def values(ep, stem, ids, col):
@@ -56,17 +57,23 @@ def main():
     ap.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     ap.add_argument("--n-boot", type=int, default=1000)
     ap.add_argument("--folds", nargs="+", default=["test", "few_shot_heldout"])
+    ap.add_argument("--agent-tag", default="agent_qwen3", help="result / stem tag of the agent rows (C-max: agent_qwen3max)")
+    ap.add_argument("--selector-stem", default="selector__G3")
+    ap.add_argument("--selector-results", default="selector.csv")
+    ap.add_argument("--extra-stems", nargs="*", default=[], help="extra single-candidate stems to report as rows (e.g. agent_qwen3max_vote__G3)")
+    ap.add_argument("--suffix", default="", help="output file suffix (e.g. _max -> agent_max_w05.csv, tables/agent_max.tex)")
     args = ap.parse_args()
-    global FOLDS
+    global FOLDS, B_STEM, TAG, SUFFIX
     FOLDS = [(f, FOLD_LABEL.get(f, f)) for f in args.folds]
+    B_STEM, TAG, SUFFIX = args.selector_stem, args.agent_tag, args.suffix
     cohort = pd.read_csv(args.cohort)
     cols = ["episode_id", "method", "protocol", "ade", "route_ok", "fde_gt_500"]
     ep = pd.read_parquet(os.path.join(paths.SCORES, args.run, "episodes_all.parquet"), columns=cols)
     epA = pd.read_parquet(os.path.join(paths.SCORES, A_RUN, "episodes_all.parquet"), columns=cols)
     epA = epA[(epA.method == A_STEM) & (epA.protocol == PROTO) & epA.episode_id.isin(set(cohort.episode_id))]
     res_dir = os.path.join(paths.BENCH, "agent_logs", args.run, "results")
-    res = {s: pd.read_csv(os.path.join(res_dir, f"agent_qwen3_s{s}.csv")) for s in args.seeds if os.path.exists(os.path.join(res_dir, f"agent_qwen3_s{s}.csv"))}
-    sel_res = pd.read_csv(os.path.join(res_dir, "selector.csv")) if os.path.exists(os.path.join(res_dir, "selector.csv")) else None
+    res = {s: pd.read_csv(os.path.join(res_dir, f"{TAG}_s{s}.csv")) for s in args.seeds if os.path.exists(os.path.join(res_dir, f"{TAG}_s{s}.csv"))}
+    sel_res = pd.read_csv(os.path.join(res_dir, args.selector_results)) if os.path.exists(os.path.join(res_dir, args.selector_results)) else None
     tm_beam = os.path.join(paths.PREDS, args.run, PROTO, "tool_beam__G3.part0.timing.csv")
     tm_beam = pd.read_csv(tm_beam).set_index("key").secs if os.path.exists(tm_beam) else None
     pool = ep[ep.method.str.startswith("poolcand_") & (ep.protocol == PROTO)]
@@ -81,7 +88,7 @@ def main():
         common = a.index.intersection(b.index)
         chk = pd.DataFrame(dict(n_common=[len(common)], max_abs_ade_diff=[float(np.max(np.abs(a.loc[common] - b.loc[common]))) if len(common) else np.nan],
                                 n_only_v11=[len(a.index.difference(b.index))], n_only_tool=[len(b.index.difference(a.index))]))
-        chk.to_csv(os.path.join(OUT, "agent_identity_check.csv"), index=False)
+        chk.to_csv(os.path.join(OUT, f"agent{SUFFIX}_identity_check.csv"), index=False)
     for fold, flab in FOLDS:
         c = cohort[cohort.fold == fold]
         ids, drivers = list(c.episode_id), c.driver.to_numpy()
@@ -109,10 +116,11 @@ def main():
         # C per seed and pooled
         R, A_, N_, F_, Rfb, Afb, Nfb, Ffb = [], [], [], [], [], [], [], []
         for s in args.seeds:
-            stem = f"agent_qwen3_s{s}__G3"
+            stem = f"{TAG}_s{s}__G3"
             r_, a_, n_, f_ = mats(ep, stem)
             R.append(r_[0]); A_.append(a_[0]); N_.append(n_[0]); F_.append(f_[0])
-            rf, af, nf, ff = mats(ep, f"agent_qwen3_fb_s{s}__G3")
+            fb_stem = f"agent_qwen3_fb_s{s}__G3" if TAG == "agent_qwen3" else f"{TAG}_fb_s{s}__G3"
+            rf, af, nf, ff = mats(ep, fb_stem)
             Rfb.append(rf[0]); Afb.append(af[0]); Nfb.append(nf[0]); Ffb.append(ff[0])
             row = dict(row=f"agent_s{s}", fold=fold, label=f"Qwen agent, seed {s}", **rate_row(r_, a_, n_, f_, drivers, args.n_boot))
             if s in res:
@@ -146,6 +154,15 @@ def main():
         ro = pool_route.reindex(ids).fillna(0).to_numpy()[None]
         ao = pool_ade.reindex(ids).to_numpy(); ao = np.where(np.isnan(ao), np.inf, ao)[None]
         rows.append(dict(row="oracle", fold=fold, label="pool oracle (diagnostic)", **rate_row(ro, ao, ~np.isfinite(ao), np.zeros_like(ro), drivers, args.n_boot)))
+        for xs in args.extra_stems:                                 # e.g. the seed-vote stem (C-max)
+            rx, ax, nx, fx = mats(ep, xs)
+            rows.append(dict(row=xs.split("__")[0], fold=fold, label=xs.split("__")[0], **rate_row(rx, ax, nx, fx, drivers, args.n_boot)))
+            d = rx - rB
+            m, (lo, hi) = stats.mean_ci(d[0], drivers, n_boot=args.n_boot)
+            pairs.append(dict(pair=f"{xs.split('__')[0]}_vs_selector", fold=fold, n=len(ids), n_drivers=int(len(np.unique(drivers))), route_diff_pp=100 * m, route_lo_pp=100 * lo, route_hi_pp=100 * hi))
+            d = rx - rA
+            m, (lo, hi) = stats.mean_ci(d[0], drivers, n_boot=args.n_boot)
+            pairs.append(dict(pair=f"{xs.split('__')[0]}_vs_beam", fold=fold, n=len(ids), n_drivers=int(len(np.unique(drivers))), route_diff_pp=100 * m, route_lo_pp=100 * lo, route_hi_pp=100 * hi))
         # pairs: C - B and C - A route (unconditional), ADE paired on common outputs
         for other, (rO, aO) in (("selector", (rB, aB)), ("beam", (rA, aA))):
             d = R - rO                                                   # (S, N)
@@ -164,12 +181,15 @@ def main():
     if tab.empty:
         raise SystemExit("no rows: check --folds against the cohort manifest")
     os.makedirs(OUT, exist_ok=True)
-    tab.to_csv(os.path.join(OUT, "agent_w05.csv"), index=False)
-    pd.DataFrame(pairs).to_csv(os.path.join(OUT, "agent_pairs_w05.csv"), index=False)
+    tab.to_csv(os.path.join(OUT, f"agent{SUFFIX}_w05.csv"), index=False)
+    pd.DataFrame(pairs).to_csv(os.path.join(OUT, f"agent{SUFFIX}_pairs_w05.csv"), index=False)
     if status_rows:
-        pd.DataFrame(status_rows).to_csv(os.path.join(OUT, "agent_status_w05.csv"), index=False)
-    write_tex(tab)
-    write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk)
+        pd.DataFrame(status_rows).to_csv(os.path.join(OUT, f"agent{SUFFIX}_status_w05.csv"), index=False)
+    if SUFFIX == "":
+        write_tex(tab)
+        write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk)
+    else:
+        write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk, name=f"agent{SUFFIX}_results.md")
     show = ["row", "fold", "n", "route_pct", "route_lo", "route_hi", "ade_median", "noout_pct", "cost_reconstructed_med", "tool_calls_mean", "gen_tokens_mean"]
     print(tab[[c for c in show if c in tab]].round(1).to_string(index=False))
     print(pd.DataFrame(pairs)[["pair", "fold", "route_diff_pp", "route_lo_pp", "route_hi_pp", "ade_med_diff", "ade_lo", "ade_hi"]].round(1).to_string(index=False))
@@ -194,10 +214,10 @@ def _f(x, nd=1):
     return f"{xf:,.{nd}f}"
 
 
-def write_report(tab, pairs, status, chk):
+def write_report(tab, pairs, status, chk, name="agent_results.md"):
     """Reproduction report (everything that does not fit the paper): per-seed rows, fallback, oracle, status shares, tool use,
     cost quantities, identity and live checks, selector validation."""
-    rep = os.path.join(paths.GPS_DIR, "reports", "icde", "agent_results.md")
+    rep = os.path.join(paths.GPS_DIR, "reports", "icde", name)
     L = ["# Agent study results (supplementary cohort; generated by scripts/icde_agent_tables.py, do not edit)", ""]
     L += ["Failure-aware: windows without a valid output count with ADE +inf and route 0. Rates pool the three nominal seeds and are",
           "bootstrapped by driver (1,000 resamples, 95 % percentile intervals); ADE medians average the per-seed medians inside every resample.", ""]

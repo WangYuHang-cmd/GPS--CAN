@@ -1,0 +1,44 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Accuracy on the cost subset at the published and at smaller search budgets (validation windows).}\label{tab:supp_cost_acc}
+\begin{tabular}{lllrrrr}\toprule
+method / budget & protocol & window & $n$ & fail & median ADE m & route \% \\\midrule
+dewri\_\_G1 & F-M-Hm & 5 min & 76 & 0 & 1{,}233 & 21 \\
+dewri\_\_G1 & F-M-Hm & 15 min & 16 & 1 & 4{,}170 & 12 \\
+dewri\_hp\_\_G1 & F-M-Hp & 5 min & 76 & 1 & 524 & 34 \\
+dewri\_hp\_\_G1 & F-M-Hp & 15 min & 16 & 2 & 1{,}737 & 25 \\
+dr\_none\_\_G1 & O-N-Hp & 5 min & 76 & 0 & 497 & 16 \\
+dr\_none\_\_G1 & O-N-Hp & 15 min & 16 & 0 & 3{,}132 & 6 \\
+dr\_steer\_\_G3 & O-N-Hp & 5 min & 76 & 0 & 745 & 3 \\
+dr\_steer\_\_G3 & O-N-Hp & 15 min & 16 & 0 & 4{,}681 & 0 \\
+elastic\_pathing\_\_G1 & F-M-Hm & 5 min & 76 & 0 & 428 & 38 \\
+elastic\_pathing\_\_G1 & F-M-Hm & 15 min & 16 & 0 & 3{,}268 & 19 \\
+elastic\_pathing\_hp\_\_G1 & F-M-Hp & 5 min & 76 & 0 & 205 & 46 \\
+elastic\_pathing\_hp\_\_G1 & F-M-Hp & 15 min & 16 & 0 & 2{,}100 & 25 \\
+learned\_gru\_s0\_\_G3 & O-N-Hp & 5 min & 76 & 0 & 203 & 12 \\
+learned\_gru\_s0\_\_G3 & O-N-Hp & 15 min & 16 & 0 & 1{,}237 & 0 \\
+macrotracking\_\_G3 & O-M-Hp & 5 min & 76 & 0 & 75 & 50 \\
+macrotracking\_\_G3 & O-M-Hp & 15 min & 16 & 0 & 1{,}709 & 25 \\
+map\_beam\_none\_\_G1 & F-M-Hp & 5 min & 76 & 0 & 549 & 32 \\
+map\_beam\_none\_\_G1 & F-M-Hp & 15 min & 16 & 0 & 4{,}260 & 12 \\
+map\_beam\_steer\_\_G3 & F-M-Hp & 5 min & 76 & 0 & 21 & 84 \\
+map\_beam\_steer\_\_G3 & F-M-Hp & 15 min & 16 & 0 & 58 & 81 \\
+map\_beam\_steer\_b50\_\_G3 & F-M-Hp & 5 min & 76 & 0 & 21 & 84 \\
+map\_beam\_steer\_b50\_\_G3 & F-M-Hp & 15 min & 16 & 0 & 58 & 81 \\
+map\_pf\_learned\_gru\_s0\_\_G3 & O-M-Hp & 5 min & 76 & 0 & 38 & 84 \\
+map\_pf\_learned\_gru\_s0\_\_G3 & O-M-Hp & 15 min & 16 & 0 & 115 & 88 \\
+map\_pf\_none\_\_G1 & O-M-Hp & 5 min & 76 & 0 & 933 & 36 \\
+map\_pf\_none\_\_G1 & O-M-Hp & 15 min & 16 & 0 & 3{,}935 & 19 \\
+map\_pf\_steer\_\_G3 & O-M-Hp & 5 min & 76 & 0 & 26 & 87 \\
+map\_pf\_steer\_\_G3 & O-M-Hp & 15 min & 16 & 0 & 90 & 81 \\
+map\_pf\_steer\_n500\_\_G3 & O-M-Hp & 5 min & 76 & 0 & 24 & 87 \\
+map\_pf\_steer\_n500\_\_G3 & O-M-Hp & 15 min & 16 & 0 & 91 & 81 \\
+opd2\_\_G3 & F-M-Hp & 5 min & 76 & 0 & 23 & 76 \\
+opd2\_\_G3 & F-M-Hp & 15 min & 16 & 0 & 1{,}317 & 31 \\
+spy\_\_G3 & F-M-Hm & 5 min & 76 & 0 & 1{,}306 & 7 \\
+spy\_\_G3 & F-M-Hm & 15 min & 16 & 0 & 5{,}401 & 6 \\
+spy\_area\_\_G3 & F-M-Hm & 5 min & 76 & 9 & 2{,}743 & 0 \\
+spy\_area\_\_G3 & F-M-Hm & 15 min & 16 & 1 & 6{,}180 & 0 \\
+spy\_hp\_\_G3 & F-M-Hp & 5 min & 76 & 0 & 965 & 16 \\
+spy\_hp\_\_G3 & F-M-Hp & 15 min & 16 & 0 & 4{,}946 & 6 \\
+\bottomrule\end{tabular}
+\end{table*}

@@ -206,3 +206,35 @@ def motion_summary(events, s_q, psi_q, theta0, t0, t_end, t_rel):
     out["can_gap_total_s"] = round(float(sum(g[1] - g[0] for g in gaps)), 1) if gaps else 0.0
     out["dr_turns"] = dr_turn_list(s_q, psi_q, theta0, t_rel)
     return out
+
+
+# ---- C-max additions (ceiling exploration): dead-reckoning shape evidence and junction-level consistency
+
+def dr_path(s_q, psi_q, theta0):
+    """Pure dead-reckoning trajectory at the query times from the CAN distance s(t) and relative heading psi(t): the
+    position a method would output with no map at all (start at the origin, heading theta0 + psi)."""
+    s = np.asarray(s_q, dtype=float)
+    th = float(theta0) + np.asarray(psi_q, dtype=float)
+    ds = np.diff(np.concatenate([[0.0], s]))
+    return np.column_stack([np.cumsum(ds * np.cos(th)), np.cumsum(ds * np.sin(th))])
+
+
+def dr_distances(xy, dr_xy, t_rel):
+    """Point-wise distance between a candidate and the dead-reckoned path: mean over the first 60 s, the first 120 s
+    and the whole window, plus the end distance. Dead reckoning drifts over minutes but is accurate early on."""
+    d = np.hypot(*(np.asarray(xy, dtype=float) - np.asarray(dr_xy, dtype=float)).T)
+    t = np.asarray(t_rel, dtype=float)
+    out = {}
+    for T in (60, 120):
+        m = t <= T
+        out[f"dr_dist_first{T}_m"] = float(np.mean(d[m])) if m.any() else float("nan")
+    out["dr_mean_dist_m"] = float(np.mean(d))
+    out["dr_end_dist_m"] = float(d[-1])
+    return out
+
+
+def junction_consistency(rows, tol_deg=45.0):
+    """Per candidate: at every passed junction with alternatives, does the taken turn agree with the dead-reckoned
+    heading change around that moment (both left-positive degrees)?"""
+    agree = sum(1 for r in rows if abs(float(r["taken_turn_deg"]) - float(r["dr_change_deg"])) <= tol_deg)
+    return dict(jn_agree=int(agree), jn_disagree=int(len(rows) - agree), jn_total=int(len(rows)))

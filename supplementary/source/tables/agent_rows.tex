@@ -1,0 +1,22 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Agent study (supplementary cohort, one five-minute window per held-out drive): every configuration and seed, with the selector fallback row and the pool oracle.}\label{tab:supp_agent}
+\begin{tabular}{p{0.26\textwidth}lrrrrrrr}\toprule
+row & fold & $n$ & route \% [CI] & median ADE m [CI] & no out. \% & cost s & calls & tokens \\\midrule
+map beam (A) & test & 268 & 69 [58, 85] & 49 [29, 66] & 0.0 & 0.3 & -- & -- \\
+supervised selector (B) & test & 268 & 75 [67, 87] & 38 [29, 50] & 0.0 & 1.1 & 3.0 & -- \\
+Qwen agent, seed 0 & test & 268 & 75 [66, 88] & 41 [29, 55] & 0.0 & 35.5 & 2.9 & 1{,}703 \\
+Qwen agent, seed 1 & test & 268 & 75 [65, 87] & 44 [27, 54] & 0.0 & 37.8 & 2.9 & 1{,}753 \\
+Qwen agent, seed 2 & test & 268 & 75 [66, 88] & 39 [29, 52] & 0.0 & 35.9 & 3.0 & 1{,}702 \\
+Qwen agent (C), seeds pooled & test & 268 & 75 [66, 88] & 41 [29, 53] & 0.0 & 36.4 & 2.9 & 1{,}719 \\
+Qwen agent with selector fallback & test & 268 & 75 [66, 88] & 41 [29, 53] & 0.0 & -- & -- & -- \\
+pool oracle (diagnostic) & test & 268 & 83 [74, 93] & 27 [19, 32] & 0.0 & -- & -- & -- \\
+map beam (A) & few-shot & 391 & 83 [76, 90] & 24 [18, 36] & 0.0 & 0.3 & -- & -- \\
+supervised selector (B) & few-shot & 391 & 83 [78, 90] & 24 [18, 34] & 0.0 & 1.0 & 3.0 & -- \\
+Qwen agent, seed 0 & few-shot & 391 & 84 [77, 91] & 23 [18, 34] & 0.0 & 31.9 & 3.0 & 1{,}626 \\
+Qwen agent, seed 1 & few-shot & 391 & 84 [77, 90] & 23 [18, 34] & 0.0 & 37.9 & 2.9 & 1{,}741 \\
+Qwen agent, seed 2 & few-shot & 391 & 84 [78, 91] & 22 [18, 35] & 0.0 & 35.2 & 2.9 & 1{,}711 \\
+Qwen agent (C), seeds pooled & few-shot & 391 & 84 [77, 91] & 23 [18, 34] & 0.0 & 35.0 & 2.9 & 1{,}693 \\
+Qwen agent with selector fallback & few-shot & 391 & 84 [77, 91] & 23 [18, 34] & 0.0 & -- & -- & -- \\
+pool oracle (diagnostic) & few-shot & 391 & 92 [87, 96] & 16 [11, 23] & 0.0 & -- & -- & -- \\
+\bottomrule\end{tabular}
+\end{table*}

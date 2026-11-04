@@ -1,0 +1,20 @@
+[
+  {"type": "function", "function": {"name": "run_reconstructor",
+    "description": "Run one reconstructor preset on this window (each can be run once). Returns its ranked candidate paths with observable diagnostics. Presets: beam (speed+steering beam search, 10 candidates), beam_wide (beam 500, 20 candidates), beam_loose (looser heading/turn tolerances), pf, pf_s1, pf_s2, pf_s3, pf_s4 (particle filter, one lineage each, different seeds), ep (Elastic Pathing with heading, speed only), ep_hm (Elastic Pathing without heading).",
+    "parameters": {"type": "object", "properties": {"name": {"type": "string", "enum": ["beam", "beam_wide", "beam_loose", "pf", "pf_s1", "pf_s2", "pf_s3", "pf_s4", "ep", "ep_hm"]}}, "required": ["name"]}}},
+  {"type": "function", "function": {"name": "inspect_candidate",
+    "description": "Full diagnostics of one candidate you have seen: heading consistency, turn matching, dead-reckoning distance in the first 60 and 120 s, junction-level agreement, end position, overlap with other run tools' Top-1 and divergence points.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string"}}, "required": ["candidate_id"]}}},
+  {"type": "function", "function": {"name": "compare_candidates",
+    "description": "Side-by-side diagnostics of 2 to 4 candidates you have seen, and for every pair the first point where they diverge: distance, the turn each takes there, the dead-reckoned heading change at that moment and the road junction (exits) nearest to it.",
+    "parameters": {"type": "object", "properties": {"candidate_ids": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4}}, "required": ["candidate_ids"]}}},
+  {"type": "function", "function": {"name": "score_candidates",
+    "description": "Probability that each listed candidate (which you have seen) recovers the route, from a statistical model fitted on validation drives over the same diagnostics.",
+    "parameters": {"type": "object", "properties": {"candidate_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1}}, "required": ["candidate_ids"]}}},
+  {"type": "function", "function": {"name": "query_local_graph",
+    "description": "Road junction nearest to a given distance along a candidate you have seen: arrival heading, exits (relative turn, length, road class, one-way), which exit the candidate took, and the dead-reckoned heading change around that moment.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string"}, "distance_m": {"type": "number"}}, "required": ["candidate_id", "distance_m"]}}},
+  {"type": "function", "function": {"name": "submit_choice",
+    "description": "Final answer: the id of one candidate you have seen. The program outputs that candidate's full trajectory.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string"}, "reason": {"type": "string"}}, "required": ["candidate_id", "reason"]}}}
+]

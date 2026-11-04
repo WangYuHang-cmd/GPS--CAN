@@ -1,0 +1,26 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Candidate sets on five-minute windows: whole-path oracle median ADE among the first $K$ candidates, share of windows whose best candidate is ranked first, and the median number of candidates.}\label{tab:supp_topk}
+\begin{tabular}{lllrrrrrrrrr}\toprule
+method & protocol & fold & $n$ & out & single & $K$=1 & 3 & 5 & 10 & best 1st \% & cands \\\midrule
+map\_beam\_steer & F-M-Hp & test & 1{,}917 & 1{,}917 & 31 & 37 & 30 & 28 & 27 & 58 & 10 \\
+map\_beam\_steer & F-M-Hp & few-shot & 1{,}959 & 1{,}959 & 15 & 21 & 18 & 18 & 17 & 61 & 10 \\
+map\_beam\_steer & F-M-Hm & test & 1{,}917 & 1{,}917 & 2 & 41 & 32 & 29 & 27 & 54 & 10 \\
+map\_beam\_steer & F-M-Hm & few-shot & 1{,}959 & 1{,}959 & 0 & 23 & 19 & 18 & 17 & 58 & 10 \\
+map\_beam\_none & F-M-Hp & test & 1{,}917 & 1{,}917 & 31 & 165 & 85 & 73 & 60 & 35 & 10 \\
+map\_beam\_none & F-M-Hp & few-shot & 1{,}959 & 1{,}959 & 18 & 343 & 89 & 73 & 56 & 28 & 10 \\
+map\_beam\_none & F-M-Hm & test & 1{,}917 & 1{,}917 & 2 & 1{,}314 & 210 & 94 & 72 & 21 & 10 \\
+map\_beam\_none & F-M-Hm & few-shot & 1{,}959 & 1{,}959 & 0 & 1{,}527 & 461 & 139 & 71 & 17 & 10 \\
+elastic\_pathing\_hp & F-M-Hp & test & 1{,}917 & 1{,}828 & 1{,}402 & 87 & 77 & 76 & 75 & 84 & 1 \\
+elastic\_pathing\_hp & F-M-Hp & few-shot & 1{,}959 & 1{,}881 & 1{,}488 & 80 & 66 & 65 & 64 & 85 & 1 \\
+elastic\_pathing & F-M-Hm & test & 1{,}917 & 1{,}855 & 1{,}484 & 129 & 103 & 98 & 96 & 87 & 1 \\
+elastic\_pathing & F-M-Hm & few-shot & 1{,}959 & 1{,}918 & 1{,}577 & 177 & 114 & 111 & 111 & 87 & 1 \\
+can\_trace & F-M-Hm & test & 245 & 2 & 0 & fail & fail & fail & fail & 50 & 2 \\
+can\_trace & F-M-Hm & few-shot & 162 & 5 & 2 & fail & fail & fail & fail & 80 & 2 \\
+can\_trace\_area & F-M-Hm & test & 245 & 85 & 14 & fail & fail & fail & fail & 36 & 6 \\
+can\_trace\_area & F-M-Hm & few-shot & 162 & 64 & 5 & fail & fail & fail & fail & 27 & 6 \\
+dewri\_hp & F-M-Hp & test & 1{,}917 & 1{,}899 & 347 & 81 & 58 & 51 & 45 & 50 & 9 \\
+dewri\_hp & F-M-Hp & few-shot & 1{,}959 & 1{,}905 & 311 & 89 & 49 & 41 & 35 & 47 & 6 \\
+dewri & F-M-Hm & test & 1{,}917 & 1{,}909 & 40 & 293 & 70 & 60 & 49 & 39 & 10 \\
+dewri & F-M-Hm & few-shot & 1{,}959 & 1{,}933 & 40 & 487 & 65 & 48 & 38 & 34 & 10 \\
+\bottomrule\end{tabular}
+\end{table*}

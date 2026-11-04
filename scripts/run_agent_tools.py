@@ -29,7 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "src"))
 sys.path.insert(0, HERE)
 from cantraj import io, paths, predfile, registry  # noqa: E402
-from cantraj.agent.runner import CACHE_VERSION, TOOL_SPECS, TOOLS, ToolRunner  # noqa: E402
+from cantraj.agent.runner import CACHE_VERSION, TOOL_SPECS, TOOLS, TOOLS_MAX, ToolRunner  # noqa: E402
 from cantraj.episodes import DriveData, ref_times  # noqa: E402
 from cantraj.geo import LocalFrame  # noqa: E402
 from cantraj.maps.graph import EpisodeGraphView, build_graph_tiles  # noqa: E402
@@ -56,14 +56,16 @@ def sha256_file(p):
 def run_manifest(args):
     src = glob.glob(os.path.join(paths.GPS_DIR, "src", "cantraj", "**", "*.py"), recursive=True)
     tm = os.path.join(paths.MANIFESTS, "map_tiles_v2.csv")
+    tools = TOOLS_MAX if args.tools == "max" else TOOLS
     return dict(cohort=os.path.basename(args.manifest), cohort_sha=sha256_file(args.manifest), tiles_dir=os.path.basename(os.path.normpath(args.tiles_dir)),
                 tiles_manifest_sha=sha256_file(tm) if os.path.exists(tm) else None, code_sha=sha_files(src), cache_version=CACHE_VERSION,
-                tools={k: dict(stem=v["stem"], ref_stem=v["ref_stem"], group=v["group"]) for k, v in TOOL_SPECS.items()},
-                protocol=PROTO, group=GROUP, map_episodes_sha=sha256_file(args.map_episodes))
+                tools={k: dict(stem=TOOL_SPECS[k]["stem"], ref_stem=TOOL_SPECS[k]["ref_stem"], group=TOOL_SPECS[k]["group"]) for k in tools},
+                tool_set=args.tools, protocol=PROTO, group=GROUP, map_episodes_sha=sha256_file(args.map_episodes))
 
 
 def _drive_job(job):
-    driver, drive, eids, model_canon, tiles_dir, root, only, no_cache = job
+    driver, drive, eids, model_canon, tiles_dir, root, only, no_cache, tool_set = job
+    tools = TOOLS_MAX if tool_set == "max" else TOOLS
     t_start = time.time()
     out = dict(drive=f"{driver}/{drive}", windows={}, load_s=None, graph_s=None, errors=[], live=None)
     gman = io.load_manifest().set_index(["driver", "drive"])
@@ -103,7 +105,7 @@ def _drive_job(job):
                 continue
             graph = EpisodeGraphView(g_drive, ep.frame, visible_tiles=need_t)
             inp = dd.inputs(ep, GROUP, PROTO, static, map_graph=graph)
-            tr = ToolRunner(inp, ref_times(ep), graph, inp.init.theta0, ep.t0, ep.t_end)
+            tr = ToolRunner(inp, ref_times(ep), graph, inp.init.theta0, ep.t0, ep.t_end, tools=tools)
             if only:                                     # live, uncached single-tool execution (cost verification)
                 res = tr.run_tool(only)
                 out["live"] = dict(episode_id=eid, tool=only, tool_s=res["secs"], graph_s=out["graph_s"], load_s=out["load_s"],
@@ -142,8 +144,9 @@ def write_parts(run, root, cohort, args, rm):
         arr = np.load(os.path.join(cdir, "candidates.npz"))
         t = np.load(os.path.join(cdir, "t_abs.npz"))["t_abs"]
         with open(os.path.join(cdir, "diagnostics.json")) as f:
-            probs = {k: v["probs"] for k, v in json.load(f)["tools"].items()}
-        for name in TOOLS:
+            dj = json.load(f)
+        probs = {k: v["probs"] for k, v in dj["tools"].items()}
+        for name in dj["tools"]:
             spec = TOOL_SPECS[name]
             stem = f"{spec['stem']}__{spec['group']}"
             s = st["tools"][name]
@@ -192,10 +195,11 @@ def main():
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--limit", type=int, default=0, help="first N windows of the cohort (interface checks)")
-    ap.add_argument("--only", default=None, choices=list(TOOLS), help="live mode: run one tool for --episode, print timing JSON, write nothing")
+    ap.add_argument("--only", default=None, choices=list(TOOLS_MAX), help="live mode: run one tool for --episode, print timing JSON, write nothing")
     ap.add_argument("--episode", default=None)
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--parts-only", action="store_true", help="only rebuild the prediction parts from the caches")
+    ap.add_argument("--tools", default="base", choices=["base", "max"], help="base = the three frozen tools (protocol v1); max = the C-max presets too")
     args = ap.parse_args()
     cohort = pd.read_csv(args.manifest)
     man = pd.read_parquet(args.episode_manifest, columns=["episode_id", "model_canon"]).set_index("episode_id")
@@ -217,7 +221,7 @@ def main():
         if row.empty:
             raise SystemExit("episode not in the cohort manifest")
         row = row.iloc[0]
-        res = _drive_job((row.driver, row.drive, [args.episode], man.model_canon.get(args.episode), args.tiles_dir, root, args.only, True))
+        res = _drive_job((row.driver, row.drive, [args.episode], man.model_canon.get(args.episode), args.tiles_dir, root, args.only, True, args.tools))
         print(json.dumps(res["live"] or dict(errors=res["errors"])))
         return
     if args.parts_only:
@@ -229,11 +233,11 @@ def main():
     if args.resume:
         done = [os.path.exists(os.path.join(cache_dir(root, r.driver, r.drive, r.k), "diagnostics.json")) for r in cohort.itertuples()]
         todo = cohort[~np.array(done, dtype=bool)]
-    jobs = [(d, v, list(g.episode_id), man.model_canon.get(g.episode_id.iloc[0]), args.tiles_dir, root, None, args.no_cache)
+    jobs = [(d, v, list(g.episode_id), man.model_canon.get(g.episode_id.iloc[0]), args.tiles_dir, root, None, args.no_cache, args.tools)
             for (d, v), g in todo.groupby(["driver", "drive"], sort=True)]
     print(f"{len(cohort)} windows in cohort, {len(todo)} to run over {len(jobs)} drives, workers {args.workers}, cache {root}", flush=True)
     t_run = time.time()
-    n, errors, summary = 0, [], {k: dict(ok=0, fail=0, secs=[]) for k in TOOLS}
+    n, errors, summary = 0, [], {k: dict(ok=0, fail=0, secs=[]) for k in (TOOLS_MAX if args.tools == "max" else TOOLS)}
 
     def collect(res):
         nonlocal n

@@ -1,0 +1,12 @@
+{
+  "max_decisions": 12,
+  "max_tool_calls": 40,
+  "reserved_submit_calls": 1,
+  "total_completion_tokens": 24576,
+  "reserve_tokens": 512,
+  "per_turn_max_tokens": 6144,
+  "timeout_virtual_s": 1800.0,
+  "forced_submit_disable_thinking": true,
+  "tool_choice_non_final": "required",
+  "note": "C-max (ceiling exploration, not the frozen protocol): relaxed turns, calls and tokens; same accounting as v1"
+}

@@ -12,7 +12,7 @@ import os
 
 import numpy as np
 
-TOOLS = ("beam", "pf", "ep")
+TOOLS = ("beam", "pf", "ep")                 # frozen study; a cache may carry more tools (C-max presets), read from the cache
 UNKNOWN = "unknown (tool not run)"
 AGREE_OVERLAP = 0.8
 TOOL_INFO = {
@@ -21,7 +21,8 @@ TOOL_INFO = {
     "ep": "Elastic Pathing search using speed only (plus the given start and heading); returns up to 10 ranked candidates",
 }
 SINGLE_FIELDS = ("path_len_m", "can_dist_m", "len_ratio_dev", "hd_abs_rms_deg", "hd_abs_p90_deg", "hd_drift_rms_deg",
-                 "turns_path", "turns_dr", "turns_unmatched", "uturns", "end_east_m", "end_north_m", "net_disp_m")
+                 "turns_path", "turns_dr", "turns_unmatched", "uturns", "end_east_m", "end_north_m", "net_disp_m",
+                 "dr_dist_first60_m", "dr_dist_first120_m", "dr_mean_dist_m", "jn_agree", "jn_disagree")   # the last five: C-max caches
 NEVER = ("lat", "lon", "latitude", "longitude", "p0_lat", "p0_lon", "ref", "ade", "route_ok", "score", "way_id", "node_id", "tile")
 
 
@@ -42,12 +43,14 @@ def _r(x, nd=1):
 
 
 class EpisodeToolBox:
-    def __init__(self, cache_dir):
+    def __init__(self, cache_dir, selector=None):
         self.dir = cache_dir
         with open(os.path.join(cache_dir, "diagnostics.json")) as f:
             self.cache = json.load(f)
         with open(os.path.join(cache_dir, "junctions.json")) as f:
             self.junctions = json.load(f)
+        self.tools = tuple(self.cache["tools"])             # base tools, or the C-max presets when the cache carries them
+        self.selector = selector                            # optional frozen selector behind score_candidates (C-max)
         self._arrays = None
         self.called_tools = []
         self.visible = []
@@ -86,11 +89,11 @@ class EpisodeToolBox:
         return m
 
     def tool_descriptions(self):
-        return dict(TOOL_INFO)
+        return {n: self.cache["tools"][n].get("info", TOOL_INFO.get(n, "")) for n in self.tools}
 
     def run_reconstructor(self, name):
-        if name not in TOOLS:
-            raise ToolError(f"unknown reconstructor {name!r}; choose one of {list(TOOLS)}")
+        if name not in self.tools:
+            raise ToolError(f"unknown reconstructor {name!r}; choose one of {list(self.tools)}")
         first = name not in self.called_tools
         if first:
             self.called_tools.append(name)
@@ -108,7 +111,7 @@ class EpisodeToolBox:
         own = self.tool_of(cid)
         pw = self.cache["pairwise"].get(cid, {})
         overlap, end_d, agree, n_other = {}, {}, 0, 0
-        for name in TOOLS:
+        for name in self.tools:
             if name == own:
                 continue
             top = f"{name}-1"
@@ -131,6 +134,9 @@ class EpisodeToolBox:
         b = dict(id=cid, rank_in_tool=int(cid.rsplit("-", 1)[1]), path_len_m=_r(d["path_len_m"], 0), len_ratio_dev=_r(d["len_ratio_dev"], 3),
                  hd_abs_rms_deg=_r(d["hd_abs_rms_deg"], 1), hd_drift_rms_deg=_r(d["hd_drift_rms_deg"], 1), turns_path=d["turns_path"],
                  turns_unmatched=d["turns_unmatched"], uturns=d["uturns"])
+        for k in ("dr_dist_first60_m", "dr_dist_first120_m", "jn_agree", "jn_disagree"):      # C-max caches only
+            if k in d:
+                b[k] = _r(d[k], 0)
         b.update(self._cross(cid))
         return b
 
@@ -183,23 +189,100 @@ class EpisodeToolBox:
             return False, "invalid_choice"
         return True, "submitted"
 
+    # ---- C-max tools
+    def compare_candidates(self, cids):
+        """Side-by-side diagnostics of 2 to 4 visible candidates, with the first divergence of every pair and the road
+        junction nearest to it (exits, which one each candidate took, the dead-reckoned heading change there)."""
+        if not isinstance(cids, (list, tuple)) or not 2 <= len(cids) <= 4:
+            raise ToolError("compare_candidates takes a list of 2 to 4 candidate ids")
+        cids = [str(c).strip() for c in cids]
+        for c in cids:
+            self._check_visible(c)
+        table = {c: self._brief(c) for c in cids}
+        pairs = []
+        for i in range(len(cids)):
+            for j in range(i + 1, len(cids)):
+                a, b = cids[i], cids[j]
+                rec = self.cache["pairwise"].get(a, {}).get(b)
+                if rec is None:
+                    rec = self._pair_runtime(a, b)
+                item = dict(a=a, b=b, overlap=_r(rec.get("overlap"), 2), end_dist_m=_r(rec.get("end_dist_m"), 0))
+                if rec.get("diverge_at_m") is not None:
+                    item.update(diverge_at_m=_r(rec["diverge_at_m"], 0), at_t_s=_r(rec.get("at_t_s"), 0),
+                                a_turn_after_deg=_r(rec.get("a_turn_after_deg"), 0), b_turn_after_deg=_r(rec.get("b_turn_after_deg"), 0),
+                                dr_change_deg=_r(rec.get("dr_change_deg"), 0))
+                    ja = self._nearest_junction(a, float(rec["diverge_at_m"]))
+                    jb = self._nearest_junction(b, float(rec["diverge_at_m"]))
+                    if ja is not None:
+                        item["junction_on_a"] = ja
+                    if jb is not None and (ja is None or jb["at_m"] != ja["at_m"]):
+                        item["junction_on_b"] = jb
+                else:
+                    item["note"] = "never more than 50 m apart"
+                pairs.append(item)
+        return dict(candidates=table, pairs=pairs)
+
+    def _pair_runtime(self, a, b):
+        from .diagnostics import PathSet
+        ps = PathSet({a: self.candidate_xy(a), b: self.candidate_xy(b)})
+        rec = dict(overlap=ps.overlap(a, b), end_dist_m=ps.end_distance(a, b))
+        dv = ps.divergence(a, b)
+        if dv is not None:
+            i, s_div = dv
+            arr = self._arr()
+            psi = np.asarray(arr["psi_q"], dtype=float) if "psi_q" in arr else None
+            rec.update(diverge_at_m=s_div, at_t_s=float(self.t_rel()[i]))
+            if psi is not None:
+                i0, i1 = max(i - 5, 0), min(i + 5, len(psi) - 1)
+                rec["dr_change_deg"] = float(np.degrees(psi[i1] - psi[i0]))
+        return rec
+
+    def _nearest_junction(self, cid, dist_m):
+        rows = self.junctions.get(cid, [])
+        if not rows:
+            return None
+        j = min(rows, key=lambda r: abs(r["at_m"] - dist_m))
+        if abs(j["at_m"] - dist_m) > 150.0:
+            return None
+        return j
+
+    def score_candidates(self, cids):
+        """Probabilities of a frozen selector (trained on validation labels) for visible candidates."""
+        if self.selector is None:
+            raise ToolError("no selector is available in this configuration")
+        if not isinstance(cids, (list, tuple)) or not cids:
+            raise ToolError("score_candidates takes a non-empty list of candidate ids")
+        out = {}
+        for c in cids:
+            c = str(c).strip()
+            self._check_visible(c)
+            out[c] = round(float(self.selector.proba(self.features(c, called_only=True))), 3)
+        return dict(selector_probability=out, note="probability that the candidate recovers the route, from a model fitted on validation drives")
+
     # ---- selector view (B runs every tool, so it sees every field)
     def call_all(self):
-        for name in TOOLS:
+        for name in self.tools:
             self.run_reconstructor(name)
         return self
 
-    def features(self, cid):
-        """Numeric feature dict for the supervised selector (all tools called)."""
+    def features(self, cid, called_only=False):
+        """Numeric feature dict for the supervised selector. With called_only (the agent's score_candidates tool) the
+        cross-tool fields use only the tools the agent has run; the selector itself (B) calls every tool first."""
         d = self.cache["candidates"][cid]
         pw = self.cache["pairwise"].get(cid, {})
         own = self.tool_of(cid)
-        ov = [pw[f"{n}-1"]["overlap"] for n in TOOLS if n != own and f"{n}-1" in pw]
-        ed = [pw[f"{n}-1"]["end_dist_m"] for n in TOOLS if n != own and f"{n}-1" in pw]
-        return dict(tool=own, rank=int(cid.rsplit("-", 1)[1]), hd_abs_rms_deg=d["hd_abs_rms_deg"], hd_abs_p90_deg=d["hd_abs_p90_deg"],
-                    hd_drift_rms_deg=d["hd_drift_rms_deg"], turns_unmatched=d["turns_unmatched"], len_ratio_dev=d["len_ratio_dev"],
-                    uturns=d["uturns"], overlap_mean=float(np.mean(ov)) if ov else 0.0, n_tools_with_output=len(ov),
-                    end_disagree_m=float(np.median(ed)) if ed else 0.0)
+        names = [n for n in self.tools if n != own and (not called_only or n in self.called_tools)]
+        ov = [pw[f"{n}-1"]["overlap"] for n in names if f"{n}-1" in pw]
+        ed = [pw[f"{n}-1"]["end_dist_m"] for n in names if f"{n}-1" in pw]
+        f = dict(tool=own, rank=int(cid.rsplit("-", 1)[1]), hd_abs_rms_deg=d["hd_abs_rms_deg"], hd_abs_p90_deg=d["hd_abs_p90_deg"],
+                 hd_drift_rms_deg=d["hd_drift_rms_deg"], turns_unmatched=d["turns_unmatched"], len_ratio_dev=d["len_ratio_dev"],
+                 uturns=d["uturns"], overlap_mean=float(np.mean(ov)) if ov else 0.0, n_tools_with_output=len(ov),
+                 end_disagree_m=float(np.median(ed)) if ed else 0.0)
+        for k in ("jn_agree", "jn_disagree", "dr_dist_first60_m", "dr_dist_first120_m", "dr_mean_dist_m"):
+            if k in d:
+                f[k] = d[k]
+        f["consensus_tools"] = sum(1 for o in ov if o >= AGREE_OVERLAP)
+        return f
 
 
 def assert_safe(obj, path="root"):

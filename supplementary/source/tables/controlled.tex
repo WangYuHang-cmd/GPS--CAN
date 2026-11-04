@@ -1,0 +1,15 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{External check on the controlled supplement (one vehicle, one metropolitan area, other drivers; five-minute windows), methods unchanged after freezing.}\label{tab:supp_controlled}
+\begin{tabular}{llrrrrrrr}\toprule
+method & protocol & $n$ & drives & drivers & fail & median ADE m [CI] & p90 m & route \% [CI] \\\midrule
+steering DR, no map & O-N-Hp & 46 & 27 & 12 & 0 & 117 [93, 170] & 449 & 7 [0, 10] \\
+map PF, steering & O-M-Hp & 46 & 27 & 12 & 0 & 75 [46, 492] & 896 & 59 [26, 69] \\
+MacroTracking & O-M-Hp & 46 & 27 & 12 & 0 & 19 [14, 24] & 144 & 85 [74, 95] \\
+map beam, steering & F-M-Hp & 46 & 27 & 12 & 0 & 46 [34, 308] & 846 & 61 [37, 67] \\
+OPD-II & F-M-Hp & 46 & 27 & 12 & 0 & 25 [11, 270] & 600 & 65 [32, 75] \\
+map PF, speed & O-M-Hp & 46 & 27 & 12 & 0 & 762 [503, 1{,}011] & 1{,}545 & 9 [0, 20] \\
+map beam, speed & F-M-Hp & 46 & 27 & 12 & 0 & 763 [321, 890] & 1{,}653 & 4 [0, 14] \\
+Elastic Pathing, heading & F-M-Hp & 46 & 27 & 12 & 0 & 337 [239, 779] & 1{,}185 & 28 [6, 38] \\
+Dewri et al., heading & F-M-Hp & 46 & 27 & 12 & 0 & 605 [345, 670] & 1{,}621 & 15 [0, 27] \\
+\bottomrule\end{tabular}
+\end{table*}

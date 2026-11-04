@@ -22,7 +22,7 @@ from .llm import LLMError, parse_arguments
 from .toolbox import ToolError, assert_safe
 
 SUBMIT = "submit_choice"
-NON_SUBMIT = ("run_reconstructor", "inspect_candidate", "query_local_graph")
+NON_SUBMIT = ("run_reconstructor", "inspect_candidate", "query_local_graph", "compare_candidates", "score_candidates")
 
 
 @dataclass
@@ -82,12 +82,13 @@ def initial_user_message(toolbox):
 
 
 def run_agent_episode(toolbox, client, budget: Budget, system_prompt, tools_schema, seed, enable_thinking, episode_id="",
-                      live_runner=None):
+                      live_runner=None, first_message=None, allow_tools=None):
     """toolbox: EpisodeToolBox; client: QwenClient-like with .chat(...) and .count_tokens(...); live_runner: optional
     callable(tool_name) -> seconds that executes the reconstructor for real (uncached verification)."""
     res = AgentResult(episode_id=episode_id, seed=int(seed))
     t_start = time.perf_counter()
-    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": initial_user_message(toolbox)}]
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": first_message or initial_user_message(toolbox)}]
+    allowed = set(allow_tools) if allow_tools else None            # critic mode: a subset of the non-submit tools
     remaining = int(budget.total_completion_tokens)
     try:
         while res.status == "running":
@@ -149,8 +150,8 @@ def run_agent_episode(toolbox, client, budget: Budget, system_prompt, tools_sche
                     else:
                         res.status, res.error = "invalid_choice", f"submitted {cid!r}; visible {toolbox.visible}"
                     break
-                if name not in NON_SUBMIT:
-                    _tool_reply(messages, tc, {"error": f"unknown tool {name!r}"})
+                if name not in NON_SUBMIT or (allowed is not None and name not in allowed):
+                    _tool_reply(messages, tc, {"error": f"tool {name!r} is not available here"})
                     continue
                 if res.n_tool_calls >= budget.max_tool_calls:
                     _tool_reply(messages, tc, {"error": "tool-call budget exhausted: call submit_choice now"})
@@ -175,6 +176,10 @@ def run_agent_episode(toolbox, client, budget: Budget, system_prompt, tools_sche
                             res.virtual_clock_s += secs
                     elif name == "inspect_candidate":
                         reply = toolbox.inspect_candidate(str(args.get("candidate_id", "")).strip())
+                    elif name == "compare_candidates":
+                        reply = toolbox.compare_candidates(args.get("candidate_ids"))
+                    elif name == "score_candidates":
+                        reply = toolbox.score_candidates(args.get("candidate_ids"))
                     else:
                         reply = toolbox.query_local_graph(str(args.get("candidate_id", "")).strip(), args.get("distance_m"))
                     assert_safe(reply)
@@ -201,3 +206,17 @@ def run_agent_episode(toolbox, client, budget: Budget, system_prompt, tools_sche
 
 def _tool_reply(messages, tc, payload):
     messages.append({"role": "tool", "tool_call_id": tc["id"], "name": tc["name"], "content": json.dumps(payload, ensure_ascii=False, default=str)})
+
+
+def run_critic(toolbox, client, budget: Budget, critic_prompt, tools_schema, seed, enable_thinking, chosen, alternatives, episode_id=""):
+    """C-max critic pass: a second conversation (same model) that re-examines the controller's choice against the best
+    alternatives with compare / inspect / query only, and either confirms or overturns it. The tool box keeps the
+    controller's visibility state, so nothing new is run. Returns an AgentResult whose choice is the critic's."""
+    body = dict(task="Review the controller's choice. Confirm it or replace it by one of the alternatives.",
+                chosen=chosen, alternatives=list(alternatives),
+                comparison=toolbox.compare_candidates([chosen] + list(alternatives)[:3]) if alternatives else None,
+                procedure=["inspect or compare the candidates as needed", "finish with submit_choice(candidate_id) for the candidate you judge most plausible"])
+    allowed = ("inspect_candidate", "query_local_graph", "compare_candidates", "score_candidates")
+    schema = [t for t in tools_schema if t["function"]["name"] in allowed + (SUBMIT,)]
+    return run_agent_episode(toolbox, client, budget, critic_prompt, schema, seed, enable_thinking, episode_id=episode_id,
+                             first_message=json.dumps(body, ensure_ascii=False, default=str), allow_tools=allowed)

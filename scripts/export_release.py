@@ -36,7 +36,9 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
            "reports/icde/agent_protocol_v1.md", "reports/icde/agent_results.md", "reports/icde/tables/agent_w05.csv",
            "reports/icde/tables/agent_pairs_w05.csv", "reports/icde/tables/agent_status_w05.csv", "reports/icde/tables/agent_cohort_counts.csv",
            "reports/icde/tables/agent_cohort_counts_val.csv", "reports/icde/tables/agent_selector_val.csv", "reports/icde/tables/agent_identity_check.csv",
-           "reports/icde/tables/agent_live_check.csv", "reports/icde/tables/agent_pilot_summary.csv"]
+           "reports/icde/tables/agent_live_check.csv", "reports/icde/tables/agent_pilot_summary.csv",
+           # EAB supplementary material (built by scripts/build_supplementary.py; placed under supplementary/ in the release)
+           "paper_icde/supplementary/supp.pdf", "paper_icde/supplementary/supp.tex", "paper_icde/supplementary/tables"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "artifact_readiness.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
@@ -91,6 +93,20 @@ def transform(rel, txt):
     txt = re.sub(r'"/home/henry/Desktop/Drive/LKA_Detection/lkas_analysis_output/([a-z_]+)\.geojson"',
                  lambda m: f'os.environ.get("CANTRAJ_{m.group(1).upper()}_GEOJSON", "{m.group(1)}.geojson")   # Natural Earth polygons', txt)
     return txt
+
+
+# files copied under another path in the release (the EAB supplementary material: PDF and its sources)
+RENAME = {"paper_icde/supplementary/supp.pdf": "supplementary/supplementary.pdf", "paper_icde/supplementary/supp.tex": "supplementary/source/supp.tex",
+          "paper_icde/supplementary/tables": "supplementary/source/tables"}
+
+
+def dest_of(rel):
+    for src, dst in RENAME.items():
+        if rel == src:
+            return dst
+        if rel.startswith(src + "/"):
+            return dst + rel[len(src):]
+    return rel
 
 
 def iter_files():
@@ -156,7 +172,7 @@ def main():
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
     n = 0
     for rel in files:
-        dst = os.path.join(args.out, rel)
+        dst = os.path.join(args.out, dest_of(rel))
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         if os.path.splitext(rel)[1].lower() in TEXT_EXT:
             with open(dst, "w", encoding="utf-8") as f:

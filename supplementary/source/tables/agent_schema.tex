@@ -1,0 +1,25 @@
+\begin{scriptsize}\begin{verbatim}
+run_reconstructor(name)
+Run one trajectory reconstructor on this window (each
+reconstructor can be run once; a repeat returns the same
+result and still counts). Returns its ranked candidate
+paths with observable diagnostics.
+inspect_candidate(candidate_id)
+Detailed diagnostics of one candidate you have already
+seen: heading consistency, turn matching against the
+dead-reckoned heading, end position, overlap with the
+Top-1 of the other reconstructors you have run, and where
+it diverges from them.
+query_local_graph(candidate_id, distance_m)
+Road junction nearest to a given distance along a
+candidate you have seen: arrival heading, the exits
+(relative turn, length, road class, one-way), which exit
+the candidate took, and the dead-reckoned heading change
+around that moment.
+submit_choice(candidate_id, reason)
+Final answer: the id of one candidate you have seen. The
+program outputs that candidate's full trajectory.
+budget: 4 decision turns, 7 tool calls + 1 submit, 4096
+completion tokens (per turn 2048, reserve 256), virtual
+clock 600 s
+\end{verbatim}\end{scriptsize}

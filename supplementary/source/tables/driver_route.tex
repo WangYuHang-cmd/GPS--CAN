@@ -1,0 +1,28 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Per-driver route recovery share (five-minute windows; drivers with at least five windows): pooled rate, quantiles over drivers and the share of drivers below 50\,\%.}\label{tab:supp_driver}
+\begin{tabular}{llrrrrrrrrrr}\toprule
+method & fold & windows & drivers & $\ge 5$ & pooled \% & q10 & q25 & q50 & q75 & q90 & below 50 \% \\\midrule
+pf & test & 1{,}917 & 42 & 36 & 87 & 62 & 77 & 87 & 96 & 100 & 3 \\
+pf & few-shot & 1{,}959 & 50 & 41 & 90 & 73 & 78 & 92 & 96 & 100 & 0 \\
+beam & test & 1{,}917 & 42 & 36 & 88 & 62 & 75 & 88 & 100 & 100 & 3 \\
+beam & few-shot & 1{,}959 & 50 & 41 & 92 & 77 & 83 & 94 & 97 & 100 & 0 \\
+opd2 & test & 1{,}917 & 42 & 36 & 79 & 54 & 64 & 78 & 84 & 89 & 8 \\
+opd2 & few-shot & 1{,}959 & 50 & 41 & 78 & 54 & 67 & 79 & 88 & 91 & 5 \\
+macro & test & 1{,}917 & 42 & 36 & 62 & 21 & 33 & 50 & 73 & 82 & 50 \\
+macro & few-shot & 1{,}959 & 50 & 41 & 65 & 32 & 42 & 61 & 77 & 84 & 37 \\
+ep\_hp & test & 1{,}917 & 42 & 36 & 58 & 23 & 31 & 41 & 64 & 71 & 61 \\
+ep\_hp & few-shot & 1{,}959 & 50 & 41 & 59 & 30 & 36 & 50 & 67 & 71 & 46 \\
+dewri\_hp & test & 1{,}917 & 42 & 36 & 62 & 15 & 26 & 45 & 61 & 78 & 53 \\
+dewri\_hp & few-shot & 1{,}959 & 50 & 41 & 59 & 17 & 30 & 56 & 70 & 85 & 49 \\
+spy\_hp & test & 1{,}917 & 42 & 36 & 20 & 0 & 0 & 10 & 18 & 33 & 100 \\
+spy\_hp & few-shot & 1{,}959 & 50 & 41 & 22 & 0 & 4 & 14 & 27 & 35 & 100 \\
+pf\_none & test & 1{,}917 & 42 & 36 & 56 & 9 & 22 & 35 & 58 & 66 & 61 \\
+pf\_none & few-shot & 1{,}959 & 50 & 41 & 48 & 12 & 29 & 50 & 64 & 75 & 49 \\
+beam\_none & test & 1{,}917 & 42 & 36 & 54 & 8 & 20 & 31 & 57 & 67 & 64 \\
+beam\_none & few-shot & 1{,}959 & 50 & 41 & 47 & 15 & 30 & 50 & 62 & 71 & 49 \\
+ep & test & 1{,}917 & 42 & 36 & 53 & 14 & 25 & 34 & 51 & 69 & 72 \\
+ep & few-shot & 1{,}959 & 50 & 41 & 50 & 23 & 32 & 43 & 57 & 67 & 59 \\
+dewri & test & 1{,}917 & 42 & 36 & 46 & 9 & 17 & 35 & 50 & 63 & 72 \\
+dewri & few-shot & 1{,}959 & 50 & 41 & 43 & 17 & 21 & 38 & 47 & 63 & 78 \\
+\bottomrule\end{tabular}
+\end{table*}

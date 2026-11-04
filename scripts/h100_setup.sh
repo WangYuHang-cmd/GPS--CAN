@@ -56,7 +56,7 @@ PY
     SHA=$(cat "$REV_FILE")
     ls -d "$HOME/.cache/huggingface/hub/models--Qwen--Qwen3-14B/snapshots/$SHA" >/dev/null 2>&1 || { echo "weights for $SHA not downloaded: run weights first"; exit 1; }
     if curl -s --max-time 5 "http://127.0.0.1:$PORT/v1/models" >/dev/null 2>&1; then echo "a server already answers on port $PORT"; exit 0; fi
-    CMD="VLLM_USE_FLASHINFER_SAMPLER=0 $VENV/bin/vllm serve $MODEL --revision $SHA --dtype bfloat16 --max-model-len 16384 --max-num-seqs 32 --gpu-memory-utilization 0.85 --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3 --host 127.0.0.1 --port $PORT --seed 0"
+    CMD="VLLM_USE_FLASHINFER_SAMPLER=0 $VENV/bin/vllm serve $MODEL --revision $SHA --dtype bfloat16 --max-model-len ${MAXLEN:-16384} --max-num-seqs 32 --gpu-memory-utilization 0.85 --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3 --host 127.0.0.1 --port $PORT --seed 0"
     echo "$CMD" > "$HOME/vllm_serve_cmd.txt"
     if command -v tmux >/dev/null; then tmux kill-session -t vllm 2>/dev/null; tmux new-session -d -s vllm "$CMD 2>&1 | tee $LOG"; else nohup bash -c "$CMD" > "$LOG" 2>&1 & fi
     echo "started; log $LOG (model load takes a few minutes; check with: bash $0 status)"

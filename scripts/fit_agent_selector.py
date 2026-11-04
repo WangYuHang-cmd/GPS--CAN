@@ -69,14 +69,17 @@ def main():
     ap.add_argument("--k", type=int, default=5)
     ap.add_argument("--C", type=float, default=1.0)
     ap.add_argument("--n-boot", type=int, default=1000)
+    ap.add_argument("--features", default="v1", choices=["v1", "max"], help="max = C-max feature list (DR shape, junction consistency, consensus)")
+    ap.add_argument("--table", default=None, help="output table name (default agent_selector_val.csv, or agent_selector_max_val.csv for max)")
     args = ap.parse_args()
+    FEATS = S.FEATURES_MAX if args.features == "max" else S.FEATURES
     from sklearn.model_selection import GroupKFold
     cohort = pd.read_csv(args.manifest)
     df = load_dataset(args.run, cohort)
     windows = df.drop_duplicates("episode_id")[["episode_id", "driver"]].reset_index(drop=True)
     n_cohort = len(cohort)
     print(f"{len(windows)} windows with candidates (cohort {n_cohort}), {len(df)} candidates, positives {df.route_ok.mean():.3f}", flush=True)
-    X = np.stack([S.feature_vector(f) for f in df.to_dict("records")])
+    X = np.stack([S.feature_vector(f, FEATS) for f in df.to_dict("records")])
     y = df.route_ok.to_numpy(dtype=int)
     # cross-fitting by driver: scaler + regression fitted inside every training fold
     chosen_cv = {}
@@ -88,7 +91,7 @@ def main():
         for eid in te_eids:
             sub = df[df.episode_id == eid]
             feats = {r["cid"]: r for r in sub.to_dict("records")}
-            chosen_cv[eid] = S.select_with_pipeline(pipe, feats)
+            chosen_cv[eid] = S.select_with_pipeline(pipe, feats, FEATS)
     refs = {"selector_cv": chosen_cv,
             "beam1": {eid: ("beam-1" if ((df.episode_id == eid) & (df.cid == "beam-1")).any() else None) for eid in windows.episode_id},
             "pf1": {eid: ("pf-1" if ((df.episode_id == eid) & (df.cid == "pf-1")).any() else None) for eid in windows.episode_id},
@@ -108,16 +111,16 @@ def main():
     rows.append(dict(row="oracle", n_windows=len(all_eids), n_drivers=int(drv_all.nunique()), route_pct=100 * p, route_lo=100 * lo, route_hi=100 * hi))
     tab = pd.DataFrame(rows)
     os.makedirs(TABLES, exist_ok=True)
-    tab.to_csv(os.path.join(TABLES, "agent_selector_val.csv"), index=False)
+    tab.to_csv(os.path.join(TABLES, args.table or ("agent_selector_val.csv" if args.features == "v1" else "agent_selector_max_val.csv")), index=False)
     print(tab.round(1).to_string(index=False), flush=True)
     # final fit on every validation window -> frozen selector
     pipe = S.fit(X, y, C=args.C)
-    params = S.export(pipe, C=args.C)
+    params = S.export(pipe, C=args.C, features=FEATS)
     params.update(n_windows=int(len(windows)), n_candidates=int(len(df)), positive_rate=float(y.mean()), fitted_on=f"{args.run} / {os.path.basename(args.manifest)}",
                   cohort_sha=hashlib.sha256(open(args.manifest, "rb").read()).hexdigest(), fitted_at=time.strftime("%Y-%m-%d %H:%M:%S"),
                   cv_route_pct=float(tab.loc[tab.row == "selector_cv", "route_pct"].iloc[0]), beam1_route_pct=float(tab.loc[tab.row == "beam1", "route_pct"].iloc[0]),
                   oracle_route_pct=float(tab.loc[tab.row == "oracle", "route_pct"].iloc[0]),
-                  coef_by_feature={f: round(c, 4) for f, c in zip(S.FEATURES, params["coef"])})
+                  coef_by_feature={f: round(c, 4) for f, c in zip(FEATS, params["coef"])})
     with open(args.out, "w") as f:
         json.dump(params, f, indent=1)
     print(f"selector -> {args.out}", flush=True)

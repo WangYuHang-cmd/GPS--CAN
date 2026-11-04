@@ -201,3 +201,61 @@ def test_seed_statistics_with_inf():
     assert p3 == stats.median_inf(v[0], c, n_boot=50)[0]
     r = stats.seed_paired(np.array([[1.0, -1.0, np.nan, 2.0], [0.5, np.nan, np.nan, 1.0]]), ["a", "a", "b", "b"], n_boot=50)
     assert r["n_per_seed"] == [3, 2] and np.isfinite(r["median"]) and not np.isnan(r["lo"]) and not np.isnan(r["hi"])
+
+
+# ---- C-max additions: dead-reckoning shape evidence, junction consistency, compare / score tools on a max cache
+from cantraj.agent import diagnostics as D  # noqa: E402
+from cantraj.agent.runner import TOOLS_MAX  # noqa: E402
+
+
+def test_dr_path_and_distances():
+    s = np.array([0.0, 10.0, 20.0, 30.0])
+    psi = np.zeros(4)
+    xy = D.dr_path(s, psi, theta0=0.0)                       # straight east at heading 0
+    assert np.allclose(xy[:, 0], s) and np.allclose(xy[:, 1], 0.0)
+    d = D.dr_distances(xy + np.array([0.0, 5.0]), xy, t_rel=np.array([1.0, 2.0, 61.0, 121.0]))
+    assert d["dr_dist_first60_m"] == pytest.approx(5.0) and d["dr_mean_dist_m"] == pytest.approx(5.0) and d["dr_end_dist_m"] == pytest.approx(5.0)
+    jc = D.junction_consistency([dict(taken_turn_deg=90, dr_change_deg=80), dict(taken_turn_deg=-90, dr_change_deg=85), dict(taken_turn_deg=0, dr_change_deg=10)])
+    assert jc == dict(jn_agree=2, jn_disagree=1, jn_total=3)
+
+
+@pytest.fixture(scope="module")
+def cache_max(tmp_path_factory):
+    g = grid_graph()
+    view = EpisodeGraphView(g, LocalFrame(37.0, -122.0))
+    inp = _inputs(theta0=0.0, T=60.0)
+    tq = np.arange(1.0, 60.0, 1.0)
+    tr = ToolRunner(inp, tq, view, theta0=0.0, t0=0.0, t_end=60.0, tools=TOOLS_MAX)
+    tr.run_all()
+    d = tmp_path_factory.mktemp("agentcache_max")
+    diag = tr.write_cache(str(d), extra=dict(episode_id="synthetic"))
+    return str(d), diag
+
+
+def test_max_cache_tools_compare_and_score(cache_max):
+    d, diag = cache_max
+    assert set(diag["tools"]) == set(TOOLS_MAX)
+    c1 = diag["candidates"]["beam-1"]
+    for k in ("dr_dist_first60_m", "jn_agree", "jn_disagree", "consensus_tools"):
+        assert k in c1
+    sel = S.Selector(dict(features=S.FEATURES_MAX, mean=[0.0] * len(S.FEATURES_MAX), scale=[1.0] * len(S.FEATURES_MAX), coef=[0.0] * len(S.FEATURES_MAX), intercept=0.0))
+    tb = EpisodeToolBox(d, selector=sel)
+    assert tb.tools == tuple(TOOLS_MAX)
+    with pytest.raises(ToolError):
+        tb.compare_candidates(["beam-1", "pf-1"])                 # nothing visible yet
+    r = tb.run_reconstructor("beam")
+    assert "dr_dist_first60_m" in r["candidates"][0] and "consensus_tools" not in r["candidates"][0]   # consensus over unrun tools stays hidden
+    if diag["tools"]["beam_wide"]["n_candidates"]:
+        tb.run_reconstructor("beam_wide")
+        cmp_ = tb.compare_candidates(["beam-1", "beam_wide-1"])
+        assert_safe(cmp_)
+        json.dumps(cmp_)
+        assert set(cmp_["candidates"]) == {"beam-1", "beam_wide-1"} and cmp_["pairs"][0]["a"] == "beam-1"
+    sc = tb.score_candidates(["beam-1"])
+    assert sc["selector_probability"]["beam-1"] == pytest.approx(0.5)
+    with pytest.raises(ToolError):
+        tb.score_candidates(["pf-1"])                             # pf not run: not visible
+    f = tb.features("beam-1")
+    assert all(k in f for k in ("jn_disagree", "dr_dist_first60_m", "consensus_tools"))
+    x = S.feature_vector(f, S.FEATURES_MAX)
+    assert x.shape == (len(S.FEATURES_MAX),) and np.isfinite(x).all()

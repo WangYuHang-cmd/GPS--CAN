@@ -1,0 +1,38 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Window taxonomy (five minutes, whole-path criterion at the given threshold): no output, no candidate within the threshold, a lower-ranked candidate within it while the Top-1 is not (ranking failure), Top-1 within it.}\label{tab:supp_tax}
+\begin{tabular}{lllrrrrrr}\toprule
+method & protocol & fold & thr. m & $n$ & no output \% & no cand. \% & ranking \% & Top-1 ok \% \\\midrule
+map\_beam\_steer & F-M-Hp & test & 50 & 1{,}917 & 0 & 28 & 10 & 61 \\
+map\_beam\_steer & F-M-Hp & test & 100 & 1{,}917 & 0 & 12 & 7 & 81 \\
+map\_beam\_steer & F-M-Hp & few-shot & 50 & 1{,}959 & 0 & 19 & 7 & 74 \\
+map\_beam\_steer & F-M-Hp & few-shot & 100 & 1{,}959 & 0 & 6 & 6 & 88 \\
+map\_beam\_steer & F-M-Hm & test & 50 & 1{,}917 & 0 & 29 & 15 & 57 \\
+map\_beam\_steer & F-M-Hm & test & 100 & 1{,}917 & 0 & 13 & 12 & 75 \\
+map\_beam\_steer & F-M-Hm & few-shot & 50 & 1{,}959 & 0 & 19 & 11 & 70 \\
+map\_beam\_steer & F-M-Hm & few-shot & 100 & 1{,}959 & 0 & 7 & 10 & 83 \\
+map\_beam\_none & F-M-Hp & test & 50 & 1{,}917 & 0 & 55 & 13 & 32 \\
+map\_beam\_none & F-M-Hp & test & 100 & 1{,}917 & 0 & 41 & 13 & 46 \\
+map\_beam\_none & F-M-Hp & few-shot & 50 & 1{,}959 & 0 & 53 & 18 & 29 \\
+map\_beam\_none & F-M-Hp & few-shot & 100 & 1{,}959 & 0 & 40 & 18 & 42 \\
+map\_beam\_none & F-M-Hm & test & 50 & 1{,}917 & 0 & 58 & 24 & 18 \\
+map\_beam\_none & F-M-Hm & test & 100 & 1{,}917 & 0 & 45 & 28 & 27 \\
+map\_beam\_none & F-M-Hm & few-shot & 50 & 1{,}959 & 0 & 57 & 27 & 16 \\
+map\_beam\_none & F-M-Hm & few-shot & 100 & 1{,}959 & 0 & 45 & 30 & 25 \\
+dewri\_hp & F-M-Hp & test & 50 & 1{,}917 & 1 & 45 & 18 & 37 \\
+dewri\_hp & F-M-Hp & test & 100 & 1{,}917 & 1 & 25 & 20 & 54 \\
+dewri\_hp & F-M-Hp & few-shot & 50 & 1{,}959 & 3 & 37 & 22 & 39 \\
+dewri\_hp & F-M-Hp & few-shot & 100 & 1{,}959 & 3 & 22 & 23 & 52 \\
+dewri & F-M-Hm & test & 50 & 1{,}917 & 0 & 49 & 22 & 29 \\
+dewri & F-M-Hm & test & 100 & 1{,}917 & 0 & 30 & 28 & 41 \\
+dewri & F-M-Hm & few-shot & 50 & 1{,}959 & 1 & 41 & 29 & 29 \\
+dewri & F-M-Hm & few-shot & 100 & 1{,}959 & 1 & 27 & 32 & 39 \\
+elastic\_pathing\_hp & F-M-Hp & test & 50 & 1{,}917 & 5 & 56 & 4 & 35 \\
+elastic\_pathing\_hp & F-M-Hp & test & 100 & 1{,}917 & 5 & 40 & 3 & 52 \\
+elastic\_pathing\_hp & F-M-Hp & few-shot & 50 & 1{,}959 & 4 & 52 & 5 & 39 \\
+elastic\_pathing\_hp & F-M-Hp & few-shot & 100 & 1{,}959 & 4 & 37 & 5 & 54 \\
+elastic\_pathing & F-M-Hm & test & 50 & 1{,}917 & 3 & 61 & 3 & 33 \\
+elastic\_pathing & F-M-Hm & test & 100 & 1{,}917 & 3 & 46 & 2 & 48 \\
+elastic\_pathing & F-M-Hm & few-shot & 50 & 1{,}959 & 2 & 62 & 4 & 32 \\
+elastic\_pathing & F-M-Hm & few-shot & 100 & 1{,}959 & 2 & 49 & 4 & 45 \\
+\bottomrule\end{tabular}
+\end{table*}

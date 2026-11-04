@@ -1,0 +1,18 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Degraded inputs for dead reckoning (no map): clean and degraded medians and the paired median / mean differences (metres).}\label{tab:supp_robust_dr}
+\begin{tabular}{lllrrrrr}\toprule
+method & degradation & fold & med. clean & med. degraded & $n$ & paired median [CI] & paired mean [CI] \\\midrule
+steering DR & speed quantised to 1 m/s & test & 921 & 920 & 1{,}917 & -0.1 [-0.3, 0.2] & 0 [-1, 1] \\
+steering DR & speed quantised to 1 m/s & few-shot & 1{,}669 & 1{,}664 & 1{,}963 & -0.1 [-0.6, 0.1] & -0 [-1, 1] \\
+steering DR & speed noise 0.5 m/s & test & 921 & 926 & 1{,}917 & 0.1 [-0.0, 0.2] & 1 [0, 2] \\
+steering DR & speed noise 0.5 m/s & few-shot & 1{,}669 & 1{,}670 & 1{,}963 & 0.1 [0.0, 0.3] & 2 [1, 3] \\
+steering DR & steering at 1 Hz & test & 921 & 934 & 1{,}917 & 0.4 [-1.3, 1.6] & 7 [-1, 14] \\
+steering DR & steering at 1 Hz & few-shot & 1{,}669 & 1{,}683 & 1{,}963 & 0.2 [-1.0, 2.3] & 5 [-1, 15] \\
+straight line & speed quantised to 1 m/s & test & 735 & 736 & 1{,}917 & 0.0 [-0.1, 0.2] & 0 [0, 1] \\
+straight line & speed quantised to 1 m/s & few-shot & 825 & 824 & 1{,}963 & 0.1 [-0.1, 0.5] & 1 [-0, 2] \\
+straight line & speed noise 0.5 m/s & test & 735 & 736 & 1{,}917 & 0.1 [0.0, 0.3] & 1 [1, 2] \\
+straight line & speed noise 0.5 m/s & few-shot & 825 & 825 & 1{,}963 & 0.1 [0.1, 0.2] & 1 [1, 1] \\
+straight line & steering at 1 Hz & test & 735 & 735 & 1{,}917 & 0.0 [0.0, 0.0] & 0 [0, 0] \\
+straight line & steering at 1 Hz & few-shot & 825 & 825 & 1{,}963 & 0.0 [0.0, 0.0] & 0 [0, 0] \\
+\bottomrule\end{tabular}
+\end{table*}

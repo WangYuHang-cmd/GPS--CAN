@@ -1,0 +1,34 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Complete board, whole drive windows, benchmark v1.1: expected windows $n$, failure share (no output), failure-aware median ADE in metres with the 95\,\% driver-clustered CI, and the route recovery rate (path recall at 50\,m $\ge 0.8$), test and few-shot drivers.}\label{tab:supp_main_full}
+\begin{tabular}{llrrrrrrrr}\toprule
+method & protocol & $n$ & fail \% & median ADE m [CI] & route \% & $n$ & fail \% & median ADE m [CI] & route \% \\\midrule
+hold start & O-N-Hp & 282 & 0.0 & 5{,}235 [3{,}825, 7{,}854] & 0 & 460 & 0.0 & 3{,}322 [2{,}580, 4{,}870] & 0 \\
+straight line (speed) & O-N-Hp & 282 & 0.0 & 6{,}551 [4{,}548, 9{,}073] & 2 & 460 & 0.0 & 3{,}327 [2{,}389, 4{,}744] & 8 \\
+start prior (speed, train stats) & O-N-Hp & 282 & 0.0 & 5{,}771 [3{,}750, 7{,}481] & 2 & 460 & 0.0 & 2{,}912 [2{,}054, 3{,}825] & 6 \\
+route retrieval (speed, train routes) & O-N-Hp & 282 & 0.0 & 5{,}586 [3{,}843, 7{,}854] & 1 & 460 & 0.0 & 3{,}236 [2{,}360, 4{,}800] & 3 \\
+steering DR, nominal & O-N-Hp & 282 & 0.0 & 2{,}708 [1{,}468, 8{,}341] & 5 & 460 & 0.0 & 2{,}674 [1{,}251, 3{,}916] & 7 \\
+steering DR, online offset & O-N-Hp & 282 & 0.0 & 5{,}004 [3{,}266, 6{,}809] & 4 & 460 & 0.0 & 3{,}118 [1{,}868, 4{,}449] & 8 \\
+steering DR, train calibrated & O-N-Hp & 282 & 0.0 & 3{,}121 [1{,}917, 8{,}403] & 4 & 460 & 0.0 & 2{,}656 [1{,}498, 3{,}902] & 7 \\
+learned GRU (3 seeds) & O-N-Hp & 282 & 0.0 & 1{,}704 [1{,}149, 4{,}563] & 6 & 460 & 0.0 & 887 [562, 1{,}547] & 11 \\
+learned physics residual (3 seeds) & O-N-Hp & 282 & 0.0 & 1{,}944 [1{,}255, 5{,}372] & 6 & 460 & 0.0 & 1{,}100 [559, 1{,}838] & 10 \\
+map PF, speed only & O-M-Hp & 282 & 0.0 & 5{,}827 [3{,}211, 7{,}147] & 8 & 454 & 0.0 & 2{,}908 [1{,}996, 3{,}946] & 13 \\
+map PF, steering & O-M-Hp & 282 & 0.0 & 1{,}906 [799, 3{,}128] & 33 & 454 & 0.0 & 193 [91, 741] & 57 \\
+MacroTracking & O-M-Hp & 282 & 0.0 & 1{,}649 [779, 4{,}479] & 33 & 454 & 0.0 & 227 [73, 900] & 46 \\
+OPD-II, online read-out & O-M-Hp & 282 & 0.0 & 1{,}712 [913, 4{,}120] & 35 & 454 & 0.0 & 407 [52, 1{,}231] & 50 \\
+map beam, speed only & F-M-Hp & 282 & 0.0 & 5{,}930 [4{,}134, 8{,}365] & 8 & 454 & 0.0 & 3{,}095 [2{,}044, 3{,}941] & 12 \\
+map beam, steering & F-M-Hp & 282 & 0.0 & 1{,}179 [343, 1{,}729] & 41 & 454 & 0.0 & 94 [44, 239] & 61 \\
+Elastic Pathing (start heading used) & F-M-Hp & 282 & 11.0 & 3{,}597 [1{,}952, 5{,}600] & 17 & 454 & 10.1 & 1{,}430 [957, 2{,}343] & 29 \\
+OPD-II (3 s delayed) & F-M-Hp & 282 & 0.0 & 1{,}711 [912, 4{,}120] & 35 & 454 & 0.0 & 407 [53, 1{,}231] & 50 \\
+Dewri et al. (start heading used) & F-M-Hp & 282 & 13.1 & 5{,}382 [2{,}969, 7{,}392] & 13 & 454 & 15.0 & 1{,}758 [1{,}119, 3{,}596] & 22 \\
+SPy, start known (start heading used) & F-M-Hp & 282 & 1.4 & 4{,}752 [3{,}473, 7{,}599] & 4 & 454 & 0.9 & 2{,}651 [1{,}830, 4{,}240] & 6 \\
+map PF, steering & O-M-Hm & 282 & 0.0 & 2{,}239 [1{,}076, 3{,}319] & 31 & 454 & 0.0 & 432 [230, 938] & 51 \\
+map PF, speed only & O-M-Hm & 282 & 0.0 & 6{,}313 [3{,}834, 8{,}070] & 4 & 454 & 0.0 & 3{,}530 [2{,}312, 4{,}912] & 9 \\
+map beam, steering & F-M-Hm & 282 & 0.0 & 1{,}244 [447, 2{,}085] & 39 & 454 & 0.0 & 124 [48, 510] & 58 \\
+map beam, speed only & F-M-Hm & 282 & 0.0 & 6{,}958 [3{,}931, 9{,}102] & 6 & 454 & 0.0 & 3{,}605 [2{,}503, 4{,}779] & 9 \\
+Elastic Pathing & F-M-Hm & 282 & 6.7 & 3{,}554 [2{,}359, 5{,}631] & 15 & 454 & 7.9 & 1{,}644 [1{,}056, 2{,}585] & 25 \\
+Dewri et al. & F-M-Hm & 282 & 8.9 & 5{,}619 [3{,}273, 7{,}780] & 11 & 454 & 10.6 & 2{,}172 [1{,}429, 3{,}600] & 19 \\
+SPy, start known & F-M-Hm & 282 & 1.8 & 4{,}932 [3{,}613, 7{,}779] & 2 & 454 & 1.1 & 3{,}254 [2{,}245, 4{,}387] & 3 \\
+curvature DR (class F, not CAN-only) & O-N-Hp & 282 & 0.0 & 678 [498, 1{,}427] & 12 & 460 & 0.0 & 325 [204, 519] & 21 \\
+\bottomrule\end{tabular}
+\par\smallskip\raggedright Left block: test drivers; right block: few-shot drivers. Protocols O/F (online / offline), N/M (no map / map), Hp/Hm (start heading given / withheld).
+\end{table*}

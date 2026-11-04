@@ -1,0 +1,3 @@
+{"max_decisions": 4, "max_tool_calls": 8, "total_completion_tokens": 8192, "reserve_tokens": 512, "per_turn_max_tokens": 4096,
+ "timeout_virtual_s": 600.0, "forced_submit_disable_thinking": true, "tool_choice_non_final": "required",
+ "note": "C-max critic pass: review of the controller's choice with compare / inspect / query only"}

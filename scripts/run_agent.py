@@ -14,6 +14,7 @@ agent produced no valid output; its extra cost = the tools the agent had not run
     python scripts/run_agent.py ... --live --concurrency 1      # uncached cost verification: each reconstructor call really runs
 """
 import argparse
+import glob
 import hashlib
 import json
 import os
@@ -30,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "src"))
 from cantraj import paths, predfile  # noqa: E402
 from cantraj.agent.llm import QwenClient  # noqa: E402
-from cantraj.agent.loop import Budget, run_agent_episode  # noqa: E402
+from cantraj.agent.loop import Budget, run_agent_episode, run_critic  # noqa: E402
 from cantraj.agent.selector import Selector  # noqa: E402
 from cantraj.agent.toolbox import TOOLS, EpisodeToolBox  # noqa: E402
 
@@ -86,16 +87,27 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--concurrency", type=int, default=12)
     ap.add_argument("--base-url", default="http://127.0.0.1:8000/v1")
-    ap.add_argument("--budget", default=os.path.join(CFG, "budget.json"))
-    ap.add_argument("--sampling", default=os.path.join(CFG, "sampling.json"))
-    ap.add_argument("--prompt", default=os.path.join(CFG, "system_prompt.txt"))
-    ap.add_argument("--schema", default=os.path.join(CFG, "tools_schema.json"))
-    ap.add_argument("--selector", default=os.path.join(CFG, "selector_v1.json"))
+    ap.add_argument("--config-dir", default=CFG, help="directory with budget.json, sampling.json, system_prompt.txt, tools_schema.json, selector json")
+    ap.add_argument("--budget", default=None)
+    ap.add_argument("--sampling", default=None)
+    ap.add_argument("--prompt", default=None)
+    ap.add_argument("--schema", default=None)
+    ap.add_argument("--selector", default=None)
+    ap.add_argument("--selector-tool", action="store_true", help="give the agent the score_candidates tool backed by the selector (C-max)")
+    ap.add_argument("--critic", action="store_true", help="C-max: a second critic conversation reviews the controller's choice")
     ap.add_argument("--tag", default=None, help="result / stem tag override (default selector | agent_qwen3_s<seed>)")
     ap.add_argument("--live", action="store_true", help="uncached verification: every reconstructor call really runs in a subprocess")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
+    cfgd = args.config_dir
+    args.budget = args.budget or os.path.join(cfgd, "budget.json")
+    args.sampling = args.sampling or os.path.join(cfgd, "sampling.json")
+    args.prompt = args.prompt or os.path.join(cfgd, "system_prompt.txt")
+    args.schema = args.schema or os.path.join(cfgd, "tools_schema.json")
+    if args.selector is None:
+        cands = sorted(glob.glob(os.path.join(cfgd, "selector*.json")))
+        args.selector = cands[0] if cands else os.path.join(cfgd, "selector_v1.json")
     cohort = pd.read_csv(args.manifest)
     if args.limit:
         cohort = cohort.head(args.limit)
@@ -110,7 +122,8 @@ def main():
     manifest = dict(run=args.run, mode=args.mode, tag=tag, seed=args.seed, cohort=os.path.basename(args.manifest), cohort_sha=sha256_file(args.manifest),
                     cache_manifest=rm_cache, budget_sha=sha256_file(args.budget), sampling_sha=sha256_file(args.sampling), prompt_sha=sha256_file(args.prompt),
                     schema_sha=sha256_file(args.schema), selector_sha=sha256_file(args.selector) if os.path.exists(args.selector) else None,
-                    model=sampling.get("model"), revision=sampling.get("revision"), mode_thinking=sampling.get("mode"), live=args.live, concurrency=args.concurrency)
+                    model=sampling.get("model"), revision=sampling.get("revision"), mode_thinking=sampling.get("mode"), live=args.live, concurrency=args.concurrency,
+                    config_dir=cfgd, selector_tool=args.selector_tool, critic=args.critic)
     man_path = os.path.join(res_dir, f"{tag}{'_live' if args.live else ''}.run_manifest.json")
     if os.path.exists(man_path) and args.resume:
         old = json.load(open(man_path))
@@ -155,6 +168,8 @@ def main():
         system_prompt = open(args.prompt).read()
         schema = json.load(open(args.schema))
         thinking = sampling.get("mode", "thinking") == "thinking"
+        critic_prompt = open(os.path.join(cfgd, "critic_prompt.txt")).read() if args.critic else None
+        critic_budget = Budget.from_json(os.path.join(cfgd, "critic_budget.json")) if args.critic else None
         sub = f"s{args.seed}" if args.tag is None else tag          # custom tags (pilot variants) keep their own log directory
         log_dir = os.path.join(logs_root(args.run), f"{sub}{'_live' if args.live else ''}")
         os.makedirs(log_dir, exist_ok=True)
@@ -172,9 +187,28 @@ def main():
         live_log = {}
 
         def one(r):
-            tb = EpisodeToolBox(cache_dir(root, r))
+            tb = EpisodeToolBox(cache_dir(root, r), selector=sel if args.selector_tool else None)
             res = run_agent_episode(tb, client, budget, system_prompt, schema, seed=args.seed, enable_thinking=thinking, episode_id=r.episode_id,
                                     live_runner=live_runner_for(r) if args.live else None)
+            critic_rec = None
+            if args.critic and res.choice is not None:
+                vis = [c for c in tb.visible if c != res.choice]        # alternatives: best others by selector probability, else other Top-1s
+                if sel is not None and vis:
+                    alts = sorted(vis, key=lambda c: -sel.proba(tb.features(c, called_only=True)))[:2]
+                else:
+                    alts = [c for c in vis if c.endswith("-1")][:2]
+                if alts:
+                    cres = run_critic(tb, client, critic_budget, critic_prompt, schema, seed=args.seed, enable_thinking=thinking, chosen=res.choice,
+                                      alternatives=alts, episode_id=r.episode_id)
+                    critic_rec = dict(status=cres.status, choice=cres.choice, overturned=bool(cres.choice and cres.choice != res.choice),
+                                      n_decisions=cres.n_decisions, n_tool_calls=cres.n_tool_calls, completion_tokens=cres.completion_tokens,
+                                      llm_wall_s=cres.llm_wall_s, messages=cres.messages)
+                    if cres.status == "submitted" and cres.choice:
+                        res.choice = cres.choice
+                    res.llm_wall_s += cres.llm_wall_s; res.virtual_clock_s += cres.virtual_clock_s; res.completion_tokens += cres.completion_tokens
+                    res.prompt_tokens += cres.prompt_tokens; res.n_tool_calls += cres.n_tool_calls; res.n_decisions += cres.n_decisions
+                    if cres.reasoning_tokens is not None and res.reasoning_tokens is not None:
+                        res.reasoning_tokens += cres.reasoning_tokens
             fb_choice, fb_extra = None, 0.0
             if res.choice is None and sel is not None:          # pre-fixed fallback: the selector over every tool, reusing what the agent ran
                 tb2 = EpisodeToolBox(cache_dir(root, r)).call_all()
@@ -184,14 +218,14 @@ def main():
             rec = res.to_dict()
             msgs = rec.pop("messages")
             with open(os.path.join(log_dir, r.episode_id.replace("/", "__") + ".jsonl"), "w") as f:
-                f.write(json.dumps(dict(rec, messages=msgs, live=live_log.get(r.episode_id)), ensure_ascii=False, default=str) + "\n")
+                f.write(json.dumps(dict(rec, messages=msgs, live=live_log.get(r.episode_id), critic=critic_rec), ensure_ascii=False, default=str) + "\n")
             row = dict(episode_id=r.episode_id, driver=r.driver, drive=r.drive, fold=r.fold, seed=args.seed, status=res.status, choice=res.choice,
                        choice_tool=res.choice.rsplit("-", 1)[0] if res.choice else None, n_decisions=res.n_decisions, n_tool_calls=res.n_tool_calls,
                        tools_run="|".join(res.tools_run), prompt_tokens=res.prompt_tokens, completion_tokens=res.completion_tokens,
                        reasoning_tokens=res.reasoning_tokens, llm_wall_s=res.llm_wall_s, tool_logical_s=res.tool_logical_s, tool_exec_s=res.tool_exec_s,
                        cost_reconstructed_s=res.virtual_clock_s, elapsed_s=res.elapsed_s, truncations=res.truncations, retries=res.retries,
                        forced_submit=res.forced_submit, error=(res.error or "")[:200], fallback_choice=fb_choice, fallback_extra_tool_s=fb_extra,
-                       n_candidates_visible=len(tb.visible))
+                       n_candidates_visible=len(tb.visible), critic_overturned=(critic_rec or {}).get("overturned"), critic_status=(critic_rec or {}).get("status"))
             with lock:
                 rows.append(row)
                 if len(rows) % 20 == 0:

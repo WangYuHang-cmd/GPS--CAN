@@ -1,0 +1,66 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Fixed map attacks on degraded inputs (five-minute windows, grid fixed before the first run): median ADE and route recovery on the clean and the degraded signal, and the paired change of the route recovery rate in percentage points with 95\,\% driver-clustered CI.}\label{tab:supp_robust_map}
+\begin{tabular}{llllrrrrrr}\toprule
+method & protocol & degradation & fold & $n$ & med. clean & med. degraded & route clean \% & route degraded \% & $\Delta$ route pp [CI] \\\midrule
+map PF, steering & O-M-Hp & steering quantised to 2 deg & test & 1{,}917 & 43 & 43 & 87 & 87 & +0.0 [-0.2, +0.3] \\
+map PF, steering & O-M-Hp & steering quantised to 2 deg & few-shot & 1{,}959 & 27 & 27 & 90 & 90 & -0.2 [-0.6, +0.0] \\
+map PF, steering & O-M-Hp & steering quantised to 5 deg & test & 1{,}917 & 43 & 42 & 87 & 87 & +0.2 [-0.2, +0.7] \\
+map PF, steering & O-M-Hp & steering quantised to 5 deg & few-shot & 1{,}959 & 27 & 26 & 90 & 90 & -0.3 [-0.8, +0.1] \\
+map PF, steering & O-M-Hp & steering quantised to 10 deg & test & 1{,}917 & 43 & 42 & 87 & 87 & +0.4 [-0.1, +0.9] \\
+map PF, steering & O-M-Hp & steering quantised to 10 deg & few-shot & 1{,}959 & 27 & 27 & 90 & 90 & -0.6 [-1.3, -0.0] \\
+map PF, steering & O-M-Hp & steering quantised to 20 deg & test & 1{,}917 & 43 & 44 & 87 & 86 & -1.4 [-2.5, -0.4] \\
+map PF, steering & O-M-Hp & steering quantised to 20 deg & few-shot & 1{,}959 & 27 & 28 & 90 & 89 & -1.1 [-2.3, -0.4] \\
+map PF, steering & O-M-Hp & steering at 1 Hz & test & 1{,}917 & 43 & 42 & 87 & 88 & +0.9 [+0.4, +1.8] \\
+map PF, steering & O-M-Hp & steering at 1 Hz & few-shot & 1{,}959 & 27 & 27 & 90 & 91 & +0.8 [+0.3, +1.3] \\
+map PF, steering & O-M-Hp & steering at 0.2 Hz & test & 1{,}917 & 43 & 49 & 87 & 84 & -2.7 [-5.8, -1.4] \\
+map PF, steering & O-M-Hp & steering at 0.2 Hz & few-shot & 1{,}959 & 27 & 38 & 90 & 85 & -5.6 [-7.8, -3.8] \\
+map PF, steering & O-M-Hp & steering offset noise 2 deg & test & 1{,}917 & 43 & 42 & 87 & 87 & -0.1 [-0.8, +0.3] \\
+map PF, steering & O-M-Hp & steering offset noise 2 deg & few-shot & 1{,}959 & 27 & 27 & 90 & 90 & -0.3 [-0.8, +0.2] \\
+map PF, steering & O-M-Hp & steering offset noise 5 deg & test & 1{,}917 & 43 & 43 & 87 & 87 & -0.5 [-1.2, +0.0] \\
+map PF, steering & O-M-Hp & steering offset noise 5 deg & few-shot & 1{,}959 & 27 & 27 & 90 & 89 & -0.8 [-1.7, -0.1] \\
+map PF, steering & O-M-Hp & steering delayed 0.5 s & test & 1{,}917 & 43 & 42 & 87 & 88 & +1.1 [+0.4, +2.1] \\
+map PF, steering & O-M-Hp & steering delayed 0.5 s & few-shot & 1{,}959 & 27 & 27 & 90 & 91 & +0.6 [-0.3, +1.2] \\
+map PF, steering & O-M-Hp & speed quantised to 1 m/s & test & 1{,}917 & 43 & 42 & 87 & 87 & +0.1 [-0.5, +0.5] \\
+map PF, steering & O-M-Hp & speed quantised to 1 m/s & few-shot & 1{,}959 & 27 & 31 & 90 & 89 & -0.7 [-1.4, +0.5] \\
+map PF, steering & O-M-Hp & speed quantised to 2 m/s & test & 1{,}917 & 43 & 41 & 87 & 87 & -0.2 [-0.7, +0.6] \\
+map PF, steering & O-M-Hp & speed quantised to 2 m/s & few-shot & 1{,}959 & 27 & 42 & 90 & 88 & -2.6 [-4.1, -0.7] \\
+map PF, steering & O-M-Hp & speed quantised to 5 m/s & test & 1{,}917 & 43 & 122 & 87 & 83 & -4.4 [-7.3, -2.4] \\
+map PF, steering & O-M-Hp & speed quantised to 5 m/s & few-shot & 1{,}959 & 27 & 68 & 90 & 83 & -7.6 [-9.7, -5.0] \\
+map PF, steering & O-M-Hp & speed at 1 Hz & test & 1{,}917 & 43 & 44 & 87 & 86 & -0.9 [-1.9, -0.1] \\
+map PF, steering & O-M-Hp & speed at 1 Hz & few-shot & 1{,}959 & 27 & 29 & 90 & 89 & -1.3 [-1.8, -0.5] \\
+map beam, steering & F-M-Hp & steering quantised to 2 deg & test & 1{,}917 & 37 & 37 & 88 & 88 & +0.1 [+0.0, +0.2] \\
+map beam, steering & F-M-Hp & steering quantised to 2 deg & few-shot & 1{,}959 & 21 & 21 & 92 & 92 & -0.1 [-0.2, +0.0] \\
+map beam, steering & F-M-Hp & steering quantised to 5 deg & test & 1{,}917 & 37 & 36 & 88 & 88 & +0.2 [-0.1, +0.8] \\
+map beam, steering & F-M-Hp & steering quantised to 5 deg & few-shot & 1{,}959 & 21 & 22 & 92 & 92 & -0.1 [-0.4, +0.2] \\
+map beam, steering & F-M-Hp & steering quantised to 10 deg & test & 1{,}917 & 37 & 37 & 88 & 88 & +0.0 [-0.3, +0.4] \\
+map beam, steering & F-M-Hp & steering quantised to 10 deg & few-shot & 1{,}959 & 21 & 22 & 92 & 92 & -0.3 [-0.7, +0.1] \\
+map beam, steering & F-M-Hp & steering quantised to 20 deg & test & 1{,}917 & 37 & 39 & 88 & 86 & -1.4 [-2.4, -0.3] \\
+map beam, steering & F-M-Hp & steering quantised to 20 deg & few-shot & 1{,}959 & 21 & 25 & 92 & 91 & -1.1 [-2.2, -0.4] \\
+map beam, steering & F-M-Hp & steering at 1 Hz & test & 1{,}917 & 37 & 37 & 88 & 89 & +1.0 [+0.2, +2.0] \\
+map beam, steering & F-M-Hp & steering at 1 Hz & few-shot & 1{,}959 & 21 & 22 & 92 & 93 & +1.3 [+0.8, +2.0] \\
+map beam, steering & F-M-Hp & steering at 0.2 Hz & test & 1{,}917 & 37 & 46 & 88 & 89 & +1.0 [-0.8, +3.0] \\
+map beam, steering & F-M-Hp & steering at 0.2 Hz & few-shot & 1{,}959 & 21 & 36 & 92 & 90 & -1.8 [-3.4, -0.1] \\
+map beam, steering & F-M-Hp & steering offset noise 2 deg & test & 1{,}917 & 37 & 37 & 88 & 87 & -0.2 [-0.4, +0.0] \\
+map beam, steering & F-M-Hp & steering offset noise 2 deg & few-shot & 1{,}959 & 21 & 22 & 92 & 92 & -0.2 [-0.4, +0.2] \\
+map beam, steering & F-M-Hp & steering offset noise 5 deg & test & 1{,}917 & 37 & 37 & 88 & 87 & -0.6 [-1.4, -0.1] \\
+map beam, steering & F-M-Hp & steering offset noise 5 deg & few-shot & 1{,}959 & 21 & 23 & 92 & 92 & -0.1 [-0.5, +0.5] \\
+map beam, steering & F-M-Hp & steering delayed 0.5 s & test & 1{,}917 & 37 & 37 & 88 & 89 & +1.3 [+0.5, +2.5] \\
+map beam, steering & F-M-Hp & steering delayed 0.5 s & few-shot & 1{,}959 & 21 & 22 & 92 & 94 & +1.6 [+0.8, +2.4] \\
+map beam, steering & F-M-Hp & speed quantised to 1 m/s & test & 1{,}917 & 37 & 36 & 88 & 88 & +0.0 [-0.7, +0.6] \\
+map beam, steering & F-M-Hp & speed quantised to 1 m/s & few-shot & 1{,}959 & 21 & 26 & 92 & 91 & -0.7 [-1.2, +0.3] \\
+map beam, steering & F-M-Hp & speed quantised to 2 m/s & test & 1{,}917 & 37 & 37 & 88 & 87 & -0.1 [-0.7, +0.8] \\
+map beam, steering & F-M-Hp & speed quantised to 2 m/s & few-shot & 1{,}959 & 21 & 34 & 92 & 90 & -2.0 [-3.6, +0.0] \\
+map beam, steering & F-M-Hp & speed quantised to 5 m/s & test & 1{,}917 & 37 & 105 & 88 & 84 & -3.3 [-5.0, -2.0] \\
+map beam, steering & F-M-Hp & speed quantised to 5 m/s & few-shot & 1{,}959 & 21 & 59 & 92 & 85 & -6.7 [-8.7, -3.9] \\
+map beam, steering & F-M-Hp & speed at 1 Hz & test & 1{,}917 & 37 & 37 & 88 & 87 & -0.2 [-1.1, +0.5] \\
+map beam, steering & F-M-Hp & speed at 1 Hz & few-shot & 1{,}959 & 21 & 23 & 92 & 91 & -1.2 [-1.8, -0.6] \\
+map beam, speed only & F-M-Hp & speed quantised to 1 m/s & test & 1{,}917 & 165 & 169 & 54 & 54 & -0.1 [-0.3, +0.1] \\
+map beam, speed only & F-M-Hp & speed quantised to 1 m/s & few-shot & 1{,}959 & 343 & 338 & 47 & 47 & +0.1 [-0.4, +0.7] \\
+map beam, speed only & F-M-Hp & speed quantised to 2 m/s & test & 1{,}917 & 165 & 174 & 54 & 54 & -0.1 [-0.5, +0.3] \\
+map beam, speed only & F-M-Hp & speed quantised to 2 m/s & few-shot & 1{,}959 & 343 & 336 & 47 & 47 & -0.2 [-0.6, +0.4] \\
+map beam, speed only & F-M-Hp & speed quantised to 5 m/s & test & 1{,}917 & 165 & 247 & 54 & 53 & -0.6 [-1.5, +0.1] \\
+map beam, speed only & F-M-Hp & speed quantised to 5 m/s & few-shot & 1{,}959 & 343 & 323 & 47 & 47 & +0.5 [-0.5, +1.1] \\
+map beam, speed only & F-M-Hp & speed at 1 Hz & test & 1{,}917 & 165 & 169 & 54 & 54 & -0.1 [-0.3, +0.1] \\
+map beam, speed only & F-M-Hp & speed at 1 Hz & few-shot & 1{,}959 & 343 & 343 & 47 & 47 & +0.1 [+0.0, +0.3] \\
+\bottomrule\end{tabular}
+\end{table*}

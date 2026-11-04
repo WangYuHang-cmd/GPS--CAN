@@ -1,0 +1,42 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Complete board, 5 min windows, benchmark v1.1: expected windows $n$, failure share (no output), failure-aware median ADE in metres with the 95\,\% driver-clustered CI, and the route recovery rate (path recall at 50\,m $\ge 0.8$), test and few-shot drivers.}\label{tab:supp_main_w05}
+\begin{tabular}{llrrrrrrrr}\toprule
+method & protocol & $n$ & fail \% & median ADE m [CI] & route \% & $n$ & fail \% & median ADE m [CI] & route \% \\\midrule
+hold start & O-N-Hp & 1{,}917 & 0.0 & 3{,}314 [2{,}113, 4{,}313] & 0 & 1{,}963 & 0.0 & 2{,}709 [2{,}232, 3{,}562] & 0 \\
+straight line (speed) & O-N-Hp & 1{,}917 & 0.0 & 735 [644, 911] & 9 & 1{,}963 & 0.0 & 825 [781, 951] & 7 \\
+start prior (speed, train stats) & O-N-Hp & 1{,}917 & 0.0 & 1{,}068 [920, 1{,}119] & 2 & 1{,}963 & 0.0 & 1{,}062 [946, 1{,}162] & 2 \\
+route retrieval (speed, train routes) & O-N-Hp & 1{,}917 & 0.0 & 3{,}083 [2{,}002, 4{,}296] & 4 & 1{,}963 & 0.0 & 2{,}530 [2{,}016, 3{,}258] & 5 \\
+steering DR, nominal & O-N-Hp & 1{,}917 & 0.0 & 921 [461, 1{,}742] & 4 & 1{,}963 & 0.0 & 1{,}669 [906, 2{,}472] & 2 \\
+steering DR, online offset & O-N-Hp & 1{,}917 & 0.0 & 869 [611, 1{,}306] & 3 & 1{,}963 & 0.0 & 1{,}423 [964, 1{,}979] & 2 \\
+steering DR, train calibrated & O-N-Hp & 1{,}917 & 0.0 & 1{,}312 [409, 4{,}189] & 4 & 1{,}963 & 0.0 & 1{,}651 [919, 2{,}430] & 2 \\
+learned GRU (3 seeds) & O-N-Hp & 1{,}917 & 0.0 & 543 [226, 2{,}478] & 7 & 1{,}963 & 0.0 & 393 [305, 492] & 5 \\
+learned physics residual (3 seeds) & O-N-Hp & 1{,}917 & 0.0 & 690 [310, 2{,}994] & 6 & 1{,}963 & 0.0 & 435 [366, 536] & 4 \\
+map PF, speed only & O-M-Hp & 1{,}917 & 0.0 & 286 [50, 868] & 56 & 1{,}959 & 0.0 & 618 [186, 890] & 48 \\
+map PF, steering & O-M-Hp & 1{,}917 & 0.0 & 43 [29, 59] & 87 & 1{,}959 & 0.0 & 27 [19, 47] & 90 \\
+map PF, learned GRU motion (3 seeds) & O-M-Hp & 1{,}917 & 0.0 & 89 [42, 168] & 86 & 1{,}959 & 0.0 & 42 [29, 79] & 86 \\
+map PF, learned residual motion (3 seeds) & O-M-Hp & 1{,}917 & 0.0 & 87 [45, 262] & 86 & 1{,}959 & 0.0 & 53 [33, 84] & 86 \\
+MacroTracking & O-M-Hp & 1{,}917 & 0.0 & 84 [66, 210] & 62 & 1{,}959 & 0.0 & 52 [40, 143] & 65 \\
+MacroTracking, train calibrated & O-M-Hp & 1{,}917 & 0.0 & 76 [61, 172] & 65 & 1{,}959 & 0.0 & 48 [38, 126] & 67 \\
+OPD-II, online read-out & O-M-Hp & 1{,}917 & 0.0 & 42 [27, 69] & 79 & 1{,}959 & 0.0 & 24 [15, 54] & 78 \\
+map beam, speed only & F-M-Hp & 1{,}917 & 0.0 & 165 [37, 633] & 54 & 1{,}959 & 0.0 & 343 [88, 637] & 47 \\
+map beam, steering & F-M-Hp & 1{,}917 & 0.0 & 37 [24, 54] & 88 & 1{,}959 & 0.0 & 21 [17, 40] & 92 \\
+map PF, steering, best-lineage read-out & F-M-Hp & 1{,}917 & 0.0 & 39 [28, 56] & 87 & 1{,}959 & 0.0 & 24 [17, 44] & 90 \\
+Elastic Pathing (start heading used) & F-M-Hp & 1{,}917 & 4.6 & 87 [38, 324] & 58 & 1{,}959 & 4.0 & 80 [54, 165] & 59 \\
+OPD-II (3 s delayed) & F-M-Hp & 1{,}917 & 0.0 & 42 [27, 68] & 79 & 1{,}959 & 0.0 & 24 [15, 54] & 78 \\
+Dewri et al. (start heading used) & F-M-Hp & 1{,}917 & 0.9 & 81 [38, 215] & 62 & 1{,}959 & 2.8 & 89 [59, 157] & 59 \\
+SPy, start known (start heading used) & F-M-Hp & 1{,}917 & 0.3 & 1{,}474 [1{,}283, 1{,}602] & 20 & 1{,}959 & 0.2 & 1{,}284 [1{,}090, 1{,}596] & 22 \\
+map PF, steering & O-M-Hm & 1{,}917 & 0.0 & 138 [99, 175] & 79 & 1{,}959 & 0.0 & 88 [61, 124] & 82 \\
+map PF, speed only & O-M-Hm & 1{,}917 & 0.0 & 1{,}773 [1{,}550, 1{,}987] & 34 & 1{,}959 & 0.0 & 1{,}868 [1{,}572, 2{,}097] & 29 \\
+map beam, steering & F-M-Hm & 1{,}917 & 0.0 & 41 [26, 59] & 81 & 1{,}959 & 0.0 & 23 [17, 42] & 87 \\
+map beam, speed only & F-M-Hm & 1{,}917 & 0.0 & 1{,}314 [866, 1{,}619] & 32 & 1{,}959 & 0.0 & 1{,}527 [1{,}294, 1{,}738] & 29 \\
+Elastic Pathing & F-M-Hm & 1{,}917 & 3.2 & 129 [42, 691] & 53 & 1{,}959 & 2.1 & 177 [94, 344] & 50 \\
+CAN-Trace (pedal subset), start known & F-M-Hm & 245 & 99.2 & fail [--, --] & 0 & 162 & 96.9 & fail [--, --] & 0 \\
+CAN-Trace (pedal subset), 5 km area & F-M-Hm & 245 & 65.3 & fail [4{,}344, --] & 0 & 162 & 60.5 & fail [--, --] & 0 \\
+Dewri et al. & F-M-Hm & 1{,}917 & 0.4 & 293 [81, 775] & 46 & 1{,}959 & 1.3 & 487 [272, 708] & 43 \\
+SPy, start known & F-M-Hm & 1{,}917 & 0.1 & 2{,}198 [1{,}702, 2{,}636] & 11 & 1{,}959 & 0.1 & 1{,}810 [1{,}512, 2{,}211] & 13 \\
+SPy, 5 km area & F-M-Hm & 1{,}917 & 11.8 & 3{,}929 [3{,}222, 4{,}406] & 0 & 1{,}959 & 5.5 & 3{,}400 [3{,}050, 3{,}953] & 0 \\
+curvature DR (class F, not CAN-only) & O-N-Hp & 1{,}917 & 0.0 & 84 [74, 107] & 27 & 1{,}963 & 0.0 & 80 [70, 92] & 27 \\
+map PF, curvature (class F) & O-M-Hp & 1{,}917 & 0.0 & 44 [29, 61] & 86 & 1{,}959 & 0.0 & 28 [19, 49] & 89 \\
+\bottomrule\end{tabular}
+\par\smallskip\raggedright Left block: test drivers; right block: few-shot drivers. Protocols O/F (online / offline), N/M (no map / map), Hp/Hm (start heading given / withheld).
+\end{table*}

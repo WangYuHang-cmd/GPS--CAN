@@ -1,0 +1,54 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Selective prediction by the beam's confidence score: windows accepted at a threshold (coverage, all expected windows in the denominator), route recovery among the accepted and the share of accepted routes that are wrong.}\label{tab:supp_conf_thr}
+\begin{tabular}{llllrrrr}\toprule
+method & protocol & window & fold & $\tau$ & coverage \% & route among accepted \% [CI] & wrong \% \\\midrule
+map\_beam\_steer & F-M-Hp & 5 min & test & 0.5 & 77 & 86 [80, 92] & 14 \\
+map\_beam\_steer & F-M-Hp & 5 min & test & 0.7 & 57 & 86 [79, 92] & 14 \\
+map\_beam\_steer & F-M-Hp & 5 min & test & 0.9 & 46 & 87 [81, 92] & 13 \\
+map\_beam\_steer & F-M-Hp & 5 min & few-shot & 0.5 & 85 & 92 [88, 94] & 8 \\
+map\_beam\_steer & F-M-Hp & 5 min & few-shot & 0.7 & 65 & 91 [86, 94] & 9 \\
+map\_beam\_steer & F-M-Hp & 5 min & few-shot & 0.9 & 55 & 92 [87, 94] & 8 \\
+map\_beam\_steer & F-M-Hp & 15 min & test & 0.5 & 84 & 73 [59, 83] & 27 \\
+map\_beam\_steer & F-M-Hp & 15 min & test & 0.7 & 61 & 74 [59, 85] & 26 \\
+map\_beam\_steer & F-M-Hp & 15 min & test & 0.9 & 45 & 76 [61, 85] & 24 \\
+map\_beam\_steer & F-M-Hp & 15 min & few-shot & 0.5 & 89 & 76 [70, 81] & 24 \\
+map\_beam\_steer & F-M-Hp & 15 min & few-shot & 0.7 & 69 & 76 [68, 80] & 24 \\
+map\_beam\_steer & F-M-Hp & 15 min & few-shot & 0.9 & 54 & 76 [70, 81] & 24 \\
+map\_beam\_steer & F-M-Hm & 5 min & test & 0.5 & 70 & 83 [77, 88] & 17 \\
+map\_beam\_steer & F-M-Hm & 5 min & test & 0.7 & 50 & 84 [78, 89] & 16 \\
+map\_beam\_steer & F-M-Hm & 5 min & test & 0.9 & 36 & 85 [79, 91] & 15 \\
+map\_beam\_steer & F-M-Hm & 5 min & few-shot & 0.5 & 80 & 87 [84, 90] & 13 \\
+map\_beam\_steer & F-M-Hm & 5 min & few-shot & 0.7 & 61 & 88 [84, 90] & 12 \\
+map\_beam\_steer & F-M-Hm & 5 min & few-shot & 0.9 & 48 & 89 [85, 92] & 11 \\
+map\_beam\_steer & F-M-Hm & 15 min & test & 0.5 & 82 & 72 [58, 83] & 28 \\
+map\_beam\_steer & F-M-Hm & 15 min & test & 0.7 & 58 & 73 [58, 84] & 27 \\
+map\_beam\_steer & F-M-Hm & 15 min & test & 0.9 & 42 & 74 [58, 86] & 26 \\
+map\_beam\_steer & F-M-Hm & 15 min & few-shot & 0.5 & 88 & 75 [70, 81] & 25 \\
+map\_beam\_steer & F-M-Hm & 15 min & few-shot & 0.7 & 69 & 75 [68, 79] & 25 \\
+map\_beam\_steer & F-M-Hm & 15 min & few-shot & 0.9 & 53 & 79 [72, 83] & 21 \\
+map\_beam\_none & F-M-Hp & 5 min & test & 0.5 & 28 & 89 [72, 95] & 11 \\
+map\_beam\_none & F-M-Hp & 5 min & test & 0.7 & 19 & 94 [84, 97] & 6 \\
+map\_beam\_none & F-M-Hp & 5 min & test & 0.9 & 13 & 97 [89, 99] & 3 \\
+map\_beam\_none & F-M-Hp & 5 min & few-shot & 0.5 & 25 & 82 [73, 90] & 18 \\
+map\_beam\_none & F-M-Hp & 5 min & few-shot & 0.7 & 15 & 91 [83, 96] & 9 \\
+map\_beam\_none & F-M-Hp & 5 min & few-shot & 0.9 & 11 & 94 [88, 98] & 6 \\
+map\_beam\_none & F-M-Hp & 15 min & test & 0.5 & 20 & 86 [51, 95] & 14 \\
+map\_beam\_none & F-M-Hp & 15 min & test & 0.7 & 13 & 91 [64, 96] & 9 \\
+map\_beam\_none & F-M-Hp & 15 min & test & 0.9 & 7 & 93 [60, 99] & 7 \\
+map\_beam\_none & F-M-Hp & 15 min & few-shot & 0.5 & 16 & 67 [42, 81] & 33 \\
+map\_beam\_none & F-M-Hp & 15 min & few-shot & 0.7 & 8 & 84 [55, 94] & 16 \\
+map\_beam\_none & F-M-Hp & 15 min & few-shot & 0.9 & 5 & 93 [76, 100] & 7 \\
+map\_beam\_none & F-M-Hm & 5 min & test & 0.5 & 17 & 50 [39, 55] & 50 \\
+map\_beam\_none & F-M-Hm & 5 min & test & 0.7 & 6 & 56 [37, 69] & 44 \\
+map\_beam\_none & F-M-Hm & 5 min & test & 0.9 & 2 & 75 [40, 90] & 25 \\
+map\_beam\_none & F-M-Hm & 5 min & few-shot & 0.5 & 14 & 46 [42, 53] & 54 \\
+map\_beam\_none & F-M-Hm & 5 min & few-shot & 0.7 & 5 & 58 [51, 70] & 42 \\
+map\_beam\_none & F-M-Hm & 5 min & few-shot & 0.9 & 2 & 62 [49, 78] & 38 \\
+map\_beam\_none & F-M-Hm & 15 min & test & 0.5 & 18 & 50 [23, 58] & 50 \\
+map\_beam\_none & F-M-Hm & 15 min & test & 0.7 & 9 & 58 [34, 71] & 42 \\
+map\_beam\_none & F-M-Hm & 15 min & test & 0.9 & 2 & 57 [8, 94] & 43 \\
+map\_beam\_none & F-M-Hm & 15 min & few-shot & 0.5 & 10 & 42 [26, 54] & 58 \\
+map\_beam\_none & F-M-Hm & 15 min & few-shot & 0.7 & 5 & 50 [33, 70] & 50 \\
+map\_beam\_none & F-M-Hm & 15 min & few-shot & 0.9 & 2 & 36 [12, 57] & 64 \\
+\bottomrule\end{tabular}
+\end{table*}

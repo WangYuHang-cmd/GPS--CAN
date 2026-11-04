@@ -1,0 +1,14 @@
+\begin{table*}[t]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\caption{Common failure of the steering and speed map methods by reference turn count and road density (folds pooled).}\label{tab:supp_cfail}
+\begin{tabular}{llrrrrr}\toprule
+stratum & level & $n$ & drivers & all fail \% [CI] & oracle route \% & beam route \% \\\midrule
+reference turns & 0-1 & 2{,}234 & 81 & 0.1 [0.0, 0.2] & 100 & 98 \\
+reference turns & 2-3 & 712 & 72 & 1.4 [0.6, 2.9] & 99 & 88 \\
+reference turns & 4-6 & 528 & 74 & 5.3 [3.3, 8.7] & 95 & 73 \\
+reference turns & 7+ & 402 & 66 & 8.7 [5.3, 12.4] & 91 & 67 \\
+density & low (56/246 per km2 cuts) & 1{,}292 & 33 & 0.9 [0.2, 1.7] & 99 & 97 \\
+density & mid (56/246 per km2 cuts) & 1{,}292 & 82 & 1.9 [1.2, 2.8] & 98 & 87 \\
+density & high (56/246 per km2 cuts) & 1{,}292 & 81 & 2.9 [1.6, 4.5] & 97 & 86 \\
+all & all & 3{,}876 & 92 & 1.9 [1.4, 2.6] & 98 & 90 \\
+\bottomrule\end{tabular}
+\end{table*}
