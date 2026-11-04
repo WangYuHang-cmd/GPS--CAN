@@ -1,0 +1,7 @@
+fold,seed,status,n,pct
+test,0,submitted,268,100.0
+test,1,submitted,268,100.0
+test,2,submitted,268,100.0
+few_shot_heldout,0,submitted,391,100.0
+few_shot_heldout,1,submitted,391,100.0
+few_shot_heldout,2,submitted,391,100.0

@@ -89,3 +89,63 @@ def paired(a, b, clusters, n_boot=1000, ci=0.95, seed=SEED):
     mean, (alo, ahi) = mean_ci(d, c, n_boot, ci, seed)
     return dict(n=int(len(d)), n_drivers=int(len(np.unique(c))), median=med, median_lo=mlo, median_hi=mhi,
                 mean=mean, mean_lo=alo, mean_hi=ahi, win_a=float(np.mean(d < 0)))
+
+
+def _pct_bounds(boots, ci):
+    """Percentile bounds without interpolation (nearest-rank), so +inf resamples never produce NaN."""
+    b = np.sort(np.asarray(boots, dtype=float))
+    lo = b[int(np.floor((1 - ci) / 2 * (len(b) - 1)))]
+    hi = b[int(np.ceil((1 + ci) / 2 * (len(b) - 1)))]
+    return float(lo), float(hi)
+
+
+def _cluster_groups(clusters):
+    uniq, inv = np.unique(np.asarray(clusters), return_inverse=True)
+    return [np.flatnonzero(inv == i) for i in range(len(uniq))]
+
+
+def seed_median(values, clusters, n_boot=1000, ci=0.95, seed=SEED):
+    """Agent study: values is an (S, N) matrix (seeds x episodes; failures +inf, NaN treated as +inf). Statistic = mean
+    over seeds of the per-seed failure-aware median, recomputed inside every driver resample (the seeds are never
+    averaged after the bootstrap). S = 1 reduces to median_inf up to the percentile method."""
+    v = np.atleast_2d(np.asarray(values, dtype=float))
+    v = np.where(np.isnan(v), np.inf, v)
+    if v.shape[1] == 0:
+        return np.nan, (np.nan, np.nan)
+    stat = lambda m: float(np.mean(np.median(m, axis=1)))  # noqa: E731
+    point = stat(v)
+    groups = _cluster_groups(clusters)
+    if len(groups) < 2:
+        return point, (point, point)
+    rng = np.random.default_rng(seed)
+    boots = np.empty(n_boot)
+    for b in range(n_boot):
+        idx = np.concatenate([groups[i] for i in rng.integers(0, len(groups), len(groups))])
+        boots[b] = stat(v[:, idx])
+    return point, _pct_bounds(boots, ci)
+
+
+def seed_paired(diff, clusters, n_boot=1000, ci=0.95, seed=SEED):
+    """Agent study: diff is an (S, N) matrix of per-seed paired differences (NaN where either side has no output).
+    Statistic = mean over seeds of the per-seed median of the finite differences, recomputed inside every driver
+    resample. Returns dict(median, lo, hi, n_per_seed, n_drivers)."""
+    d = np.atleast_2d(np.asarray(diff, dtype=float))
+    c = np.asarray(clusters)
+
+    def stat(m):
+        meds = [np.median(row[np.isfinite(row)]) for row in m if np.isfinite(row).any()]
+        return float(np.mean(meds)) if meds else np.nan
+
+    point = stat(d)
+    groups = _cluster_groups(c)
+    n_per_seed = [int(np.isfinite(row).sum()) for row in d]
+    if len(groups) < 2 or not np.isfinite(point):
+        return dict(median=point, lo=point, hi=point, n_per_seed=n_per_seed, n_drivers=len(groups))
+    rng = np.random.default_rng(seed)
+    boots = np.empty(n_boot)
+    for b in range(n_boot):
+        idx = np.concatenate([groups[i] for i in rng.integers(0, len(groups), len(groups))])
+        boots[b] = stat(d[:, idx])
+    boots = boots[np.isfinite(boots)] if np.isfinite(boots).any() else boots
+    lo, hi = _pct_bounds(boots, ci)
+    return dict(median=point, lo=lo, hi=hi, n_per_seed=n_per_seed, n_drivers=len(groups))

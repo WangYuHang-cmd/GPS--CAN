@@ -1,0 +1,31 @@
+{
+  "model": "Qwen/Qwen3-14B",
+  "revision": "40c069824f4251a91eefaf281ebe4c544efd3e18",
+  "dtype": "bfloat16",
+  "mode": "thinking",
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "top_k": 20,
+  "min_p": 0.0,
+  "presence_penalty": 0.0,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "official_alternatives": {
+    "thinking": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "top_k": 20,
+      "min_p": 0.0
+    },
+    "non_thinking": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "min_p": 0.0
+    }
+  },
+  "note": "values from the Qwen3-14B model card (no greedy decoding); mode and per-turn max_tokens may be changed once after the pilot, then frozen; revision is filled with the downloaded commit sha"
+}

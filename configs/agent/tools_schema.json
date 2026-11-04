@@ -1,0 +1,14 @@
+[
+  {"type": "function", "function": {"name": "run_reconstructor",
+    "description": "Run one trajectory reconstructor on this window (each reconstructor can be run once; a repeat returns the same result and still counts). Returns its ranked candidate paths with observable diagnostics.",
+    "parameters": {"type": "object", "properties": {"name": {"type": "string", "enum": ["beam", "pf", "ep"], "description": "beam: map beam search (speed + steering, up to 10 candidates); pf: map particle filter (speed + steering, 1 candidate); ep: Elastic Pathing (speed only, up to 10 candidates)"}}, "required": ["name"]}}},
+  {"type": "function", "function": {"name": "inspect_candidate",
+    "description": "Detailed diagnostics of one candidate you have already seen: heading consistency, turn matching against the dead-reckoned heading, end position, overlap with the Top-1 of the other reconstructors you have run, and where it diverges from them.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string", "description": "e.g. beam-1, pf-1, ep-2"}}, "required": ["candidate_id"]}}},
+  {"type": "function", "function": {"name": "query_local_graph",
+    "description": "Road junction nearest to a given distance along a candidate you have seen: arrival heading, the exits (relative turn, length, road class, one-way), which exit the candidate took, and the dead-reckoned heading change around that moment.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string"}, "distance_m": {"type": "number", "description": "distance along the candidate path in metres from the start"}}, "required": ["candidate_id", "distance_m"]}}},
+  {"type": "function", "function": {"name": "submit_choice",
+    "description": "Final answer: the id of one candidate you have seen. The program outputs that candidate's full trajectory.",
+    "parameters": {"type": "object", "properties": {"candidate_id": {"type": "string"}, "reason": {"type": "string", "description": "one or two sentences"}}, "required": ["candidate_id", "reason"]}}}
+]

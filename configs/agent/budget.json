@@ -1,0 +1,12 @@
+{
+  "max_decisions": 4,
+  "max_tool_calls": 7,
+  "reserved_submit_calls": 1,
+  "total_completion_tokens": 4096,
+  "reserve_tokens": 256,
+  "per_turn_max_tokens": 2048,
+  "timeout_virtual_s": 600.0,
+  "forced_submit_disable_thinking": true,
+  "tool_choice_non_final": "required",
+  "note": "completion tokens as counted by vLLM usage.completion_tokens (thinking included); the virtual clock adds LLM wall time, the logical tool time measured when the cache was built and the tool execution time"
+}

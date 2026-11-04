@@ -1,0 +1,42 @@
+{
+  "checked_at": "2026-11-04 (host check via h100_setup.sh check)",
+  "host": {
+    "os": "Ubuntu 24.04.5 LTS",
+    "nproc": 20,
+    "mem_total_gb": 230,
+    "mem_avail_gb": 225,
+    "disk_avail_gb": 54,
+    "python3": "3.12.3",
+    "tmux": true,
+    "docker": true,
+    "conda": false,
+    "uv": false
+  },
+  "gpu": {
+    "name": "NVIDIA H100 80GB HBM3",
+    "memory_total_mib": 81559,
+    "memory_used_mib_at_check": 0,
+    "other_processes_at_check": 0,
+    "driver_version": "595.99.02"
+  },
+  "network": {
+    "huggingface_co": "HTTP/2 200",
+    "pypi_org": "HTTP/2 200"
+  },
+  "hf_cache_before_download": "147M",
+  "env": {
+    "venv": "~/venvs/vllm",
+    "vllm": "0.33.0",
+    "torch": "2.14.0+cu130",
+    "transformers": "5.20.2",
+    "cuda_runtime": "13.0",
+    "pip_freeze": "~/vllm_pip_freeze.txt (on the host)"
+  },
+  "model": {
+    "id": "Qwen/Qwen3-14B",
+    "revision": "40c069824f4251a91eefaf281ebe4c544efd3e18",
+    "dtype": "bfloat16",
+    "serve_cmd": "see ~/vllm_serve_cmd.txt on the host"
+  },
+  "note": "env / model fields are filled when the environment and the weights are installed (AT-FREEZE)"
+}

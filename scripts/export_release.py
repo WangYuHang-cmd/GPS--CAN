@@ -31,7 +31,12 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
            "reports/icde/tables/signal_gains_w05.csv", "reports/icde/tables/signal_reference_w05.csv",
            "reports/icde/tables/cohort_horizon.csv", "reports/icde/tables/cohort_pairs.csv", "reports/icde/tables/cost.csv",
            "reports/icde/tables/cost_accuracy.csv", "reports/icde/tables/map_prep_cost.csv", "reports/icde/tables/robustness_w05.csv",
-           "reports/icde/tables/a3_visibility.csv", "reports/icde/tables/spy_dewri_diag.csv", "reports/icde/spy_val_selection.csv"]
+           "reports/icde/tables/a3_visibility.csv", "reports/icde/tables/spy_dewri_diag.csv", "reports/icde/spy_val_selection.csv",
+           # agent study (supplementary cohort): protocol, results report and aggregate tables; logs and caches stay in the data package
+           "reports/icde/agent_protocol_v1.md", "reports/icde/agent_results.md", "reports/icde/tables/agent_w05.csv",
+           "reports/icde/tables/agent_pairs_w05.csv", "reports/icde/tables/agent_status_w05.csv", "reports/icde/tables/agent_cohort_counts.csv",
+           "reports/icde/tables/agent_cohort_counts_val.csv", "reports/icde/tables/agent_selector_val.csv", "reports/icde/tables/agent_identity_check.csv",
+           "reports/icde/tables/agent_live_check.csv", "reports/icde/tables/agent_pilot_summary.csv"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}
 # machine-specific helpers and the Hugging Face staging / upload scripts are not part of the code release
 EXCLUDE_FILES = {"progress.md", "memwatch.sh", "stage_events_release.py", "upload_events_release.py", "patch_card_events.py",
@@ -54,6 +59,8 @@ GATE_ALLOW = {  # files where a pattern is expected and harmless (sha256 prefixe
     "reports/paper/benchmark_card_draft.md": {"coordinate column"},  # names the forbidden signals (latitude, longitude)
     "reports/paper/methods_draft.md": {"coordinate column"},
     "tests/test_manifest_v1.py": {"dongle id (16 hex)"},
+    "configs/agent/protocol_v1.md": {"dongle id (16 hex)"},        # the tool-runner code sha quoted in the frozen protocol
+    "reports/icde/agent_protocol_v1.md": {"dongle id (16 hex)"},
     "scripts/export_release.py": {"dongle id (16 hex)", "route timestamp", "local path", "controlled city", "coordinate column"},
 }
 

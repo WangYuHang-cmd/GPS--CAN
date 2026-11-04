@@ -87,6 +87,24 @@ python scripts/icde_spy_dewri_diag.py && python scripts/failure_analysis.py --ru
 python scripts/icde_figures.py --figs cdf topk horizon robust && python scripts/icde_macros.py && python scripts/registry.py
 ```
 
+Agent study (supplementary cohort: one map-ok five-minute window per held-out drive; `reports/icde/agent_protocol_v1.md` is the
+frozen protocol, `reports/icde/agent_results.md` the results report). The LLM is served by vLLM on a GPU host and reached through
+an OpenAI-compatible endpoint (`--base-url`, default `http://127.0.0.1:8000/v1`; `scripts/h100_setup.sh` installs and serves it):
+
+```
+python scripts/build_agent_cohort.py                                   # manifests/icde_agent_cohort.csv (test + few-shot), counts table
+python scripts/build_agent_cohort.py --folds val --out manifests/icde_agent_val.csv --pilot 40
+python scripts/run_agent_tools.py --run icde_agent_val --manifest manifests/icde_agent_val.csv --workers 3   # tool cache + tool_*/poolcand_* stems
+python scripts/score.py --run icde_agent_val --manifest $CANTRAJ_MANIFESTS/episode_manifest_v1.parquet --eligible-only --folds val \
+    --episodes-file manifests/icde_agent_val.csv --workers 2
+python scripts/fit_agent_selector.py                                   # B: cross-fitted report + configs/agent/selector_v1.json (frozen)
+python scripts/run_agent.py --run icde_agent_val --mode llm --seed 0 --manifest manifests/icde_agent_pilot.csv --concurrency 12   # pilot
+python scripts/agent_pilot_report.py --run icde_agent_val --live-tag agent_qwen3_s0_live
+bash scripts/run_icde_agent.sh cache && bash scripts/run_icde_agent.sh selector     # formal cohort: tools, then B
+bash scripts/run_icde_agent.sh llm 0; bash scripts/run_icde_agent.sh llm 1; bash scripts/run_icde_agent.sh llm 2   # C, nominal seeds
+bash scripts/run_icde_agent.sh score && bash scripts/run_icde_agent.sh tables       # scores, agent_*.csv, paper table, macros
+```
+
 Rebuilding the tables from the published per-episode scores (no method rerun): copy the published `tables/` and `reports/`
 of the package into `reports/icde/` first, because several scripts read other scripts' outputs, then run the five table
 lines above. Everything is regenerated from the scores except what needs the run outputs or the training: `cost*.csv`

@@ -1,0 +1,4 @@
+fold,n_windows,n_drives,n_drivers
+few_shot_heldout,391,391,50
+test,268,268,42
+all,659,659,92
