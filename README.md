@@ -1,4 +1,6 @@
-# cantraj: CAN-to-GPS trajectory recovery benchmark (DriveDNA companion)
+# cantraj: CANTraj-Bench, trajectory recovery from CAN signals on the CANTraj dataset (DriveDNA companion)
+
+Code of the ICDE 2027 EAB submission "[Experiment, Analysis, and Benchmark] CANTraj: Recovering Vehicle Trajectories from CAN Signals in Naturalistic Driving". CANTraj is the released dataset of paired CAN and GNSS records; CANTraj-Bench is the benchmark defined on it (protocols, folds, metrics, baselines and the re-implemented published methods).
 
 **Question.** Given a drive's starting position (and, in some protocols, its starting heading and a public road
 graph), how much of the vehicle's GPS trajectory can be reconstructed from the vehicle-bus signals alone? The benchmark
@@ -165,4 +167,4 @@ logs, which are not part of the release; the re-decoded tables are in the gated 
 ## Licence
 
 Research use only, see `LICENSE` (DriveDNA Research License). Data access is governed by the gated dataset's terms.
-Please cite the DriveDNA paper (arXiv:2607.23822) and this benchmark when you use the code or the data.
+Please cite the CANTraj paper ("[Experiment, Analysis, and Benchmark] CANTraj: Recovering Vehicle Trajectories from CAN Signals in Naturalistic Driving", under review) and the DriveDNA paper (arXiv:2607.23822) when you use the code or the data.

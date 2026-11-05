@@ -14,7 +14,7 @@
 \input{../macros_numbers.tex}
 
 \begin{document}
-\title{Supplementary Material for\\[2pt] [Experiment, Analysis, and Benchmark] Recovering Vehicle Trajectories from CAN Signals: A Large-Scale Experimental Study}
+\title{Supplementary Material for\\[2pt] [Experiment, Analysis, and Benchmark] CANTraj: Recovering Vehicle Trajectories from CAN Signals in Naturalistic Driving}
 \author{\IEEEauthorblockN{Anonymous Author(s)}
 \IEEEauthorblockA{Anonymous Institution(s)}}
 \maketitle
@@ -34,7 +34,7 @@ The code repository holds the \texttt{cantraj} package (data layer, signal white
 scoring, baselines, map graphs, learned motion models, the agent study), the scripts that run every experiment and
 build every table and figure, the frozen configuration (\texttt{configs/}: benchmark thresholds and manifest hashes,
 signal registry with provenance classes, signal groups, protocols, windows, agent prompts and budgets), the
-specification of benchmark v1 and the test suite (139 tests on synthetic data). The data package holds the dataset
+specification of benchmark v1 and the test suite (139 tests on synthetic data). The data package holds CANTraj
 (\NReleaseDrives{} drives of \NReleaseDrivers{} drivers: re-decoded CAN event streams at logged times, the aligned GNSS
 reference with the first and last two minutes of every drive cut, quality metadata and driver-disjoint splits), the
 benchmark manifests (episodes, map-start rule, tile list with md5 and snapshot date, cohorts), every per-episode score
