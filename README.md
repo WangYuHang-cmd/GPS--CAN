@@ -113,6 +113,21 @@ bash scripts/run_icde_agent.sh llm 0; bash scripts/run_icde_agent.sh llm 1; bash
 bash scripts/run_icde_agent.sh score && bash scripts/run_icde_agent.sh tables       # scores, agent_*.csv, paper table, macros
 ```
 
+Extended agent configuration (B+ and C+ in Table IV; exploratory, specified after the frozen study from validation data only and run
+once on the same cohort; `reports/icde/agent_ceiling.md` is the full report, `agent_max_results.md` the tables report):
+
+```
+python scripts/run_agent_tools.py --run icde_agent_max --manifest manifests/icde_agent_cohort.csv --tools max --workers 3   # ten presets, cache v2
+python scripts/fit_agent_selector.py --run icde_agent_max_val --manifest manifests/icde_agent_val_max.csv --features max       # B+ (selector_max.json)
+python scripts/build_agent_max_prompt.py                                 # calibration hints from validation -> configs/agent_max/system_prompt.txt
+bash scripts/run_icde_agent_max.sh pilot; for s in 0 1 2; do bash scripts/run_icde_agent_max.sh llm $s; done; bash scripts/run_icde_agent_max.sh critic 0
+bash scripts/run_icde_agent_max.sh vote && bash scripts/run_icde_agent_max.sh score
+python scripts/icde_agent_tables.py --run icde_agent_max --agent-tag agent_qwen3max --selector-stem selector_max__G3 --selector-results selector_max.csv \
+    --extra-stems agent_qwen3max_vote__G3 agent_qwen3maxcritic_s0__G3 --suffix _max --prev-run icde_agent   # agent_max_*.csv, pair with the frozen agent
+python scripts/agent_ceiling_report.py --run icde_agent_max --prev-run icde_agent --served-context 16384      # reports/icde/agent_ceiling.md
+python scripts/icde_agent_table_tex.py                                   # Table IV with both configurations (frozen rows unchanged)
+```
+
 Rebuilding the tables from the published per-episode scores (no method rerun): copy the published `tables/` and `reports/`
 of the package into `reports/icde/` first, because several scripts read other scripts' outputs, then run the five table
 lines above. Everything is regenerated from the scores except what needs the run outputs or the training: `cost*.csv`

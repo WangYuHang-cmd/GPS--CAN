@@ -40,6 +40,26 @@ def values(ep, stem, ids, col):
     return np.where(np.isnan(v), np.inf if col == "ade" else 0.0, v)
 
 
+def pair_row(name, fold, R, A_, rO, aO, drivers, seeds, n_boot):
+    """Paired difference of the agent (S x N matrices R, A_) against another system (rO, aO: (1, N) or (S, N), seed-matched when S).
+    Route: unconditional mean difference, seeds pooled inside the driver resamples; ADE: seed-aggregated paired median."""
+    S_ = R.shape[0]
+    rO2 = rO if rO.shape[0] == S_ else np.repeat(rO, S_, axis=0)
+    aO2 = aO if aO.shape[0] == S_ else np.repeat(aO, S_, axis=0)
+    d = R - rO2
+    m, (lo, hi) = stats.mean_ci(d.ravel(), np.tile(drivers, S_), n_boot=n_boot)
+    pr = dict(pair=name, fold=fold, n=R.shape[1], n_drivers=int(len(np.unique(drivers))), route_diff_pp=100 * m, route_lo_pp=100 * lo, route_hi_pp=100 * hi)
+    for i, s in enumerate(seeds[:S_]):
+        ms, (ls, hs) = stats.mean_ci(d[i], drivers, n_boot=n_boot)
+        pr[f"route_diff_s{s}_pp"] = 100 * ms
+        pd_ = stats.paired(A_[i], aO2[i], drivers, n_boot=n_boot)
+        pr[f"ade_med_diff_s{s}"], pr[f"ade_lo_s{s}"], pr[f"ade_hi_s{s}"], pr[f"n_out_s{s}"] = pd_.get("median"), pd_.get("median_lo"), pd_.get("median_hi"), pd_.get("n", 0)
+    diff = np.where(np.isfinite(A_) & np.isfinite(aO2), A_ - aO2, np.nan)
+    sp = stats.seed_paired(diff, drivers, n_boot=n_boot)
+    pr.update(ade_med_diff=sp["median"], ade_lo=sp["lo"], ade_hi=sp["hi"])
+    return pr
+
+
 def rate_row(route_mat, ade_mat, noout_mat, fde_mat, drivers, n_boot):
     """route_mat etc: (S, N) matrices; rates pooled over seeds (driver resampling), ADE through seed_median."""
     S_, N = route_mat.shape
@@ -62,6 +82,9 @@ def main():
     ap.add_argument("--selector-results", default="selector.csv")
     ap.add_argument("--extra-stems", nargs="*", default=[], help="extra single-candidate stems to report as rows (e.g. agent_qwen3max_vote__G3)")
     ap.add_argument("--suffix", default="", help="output file suffix (e.g. _max -> agent_max_w05.csv, tables/agent_max.tex)")
+    ap.add_argument("--prev-run", default=None, help="earlier agent run on the same cohort (e.g. icde_agent): adds the row agent_prev and the pair agent_vs_prev")
+    ap.add_argument("--prev-tag", default="agent_qwen3", help="agent tag of --prev-run")
+    ap.add_argument("--tex-caption", default=None, help="caption of the LaTeX table (default depends on --suffix)")
     args = ap.parse_args()
     global FOLDS, B_STEM, TAG, SUFFIX
     FOLDS = [(f, FOLD_LABEL.get(f, f)) for f in args.folds]
@@ -79,7 +102,13 @@ def main():
     pool = ep[ep.method.str.startswith("poolcand_") & (ep.protocol == PROTO)]
     pool_route = pool.groupby("episode_id").route_ok.max()
     pool_ade = pool.groupby("episode_id").ade.min()
+    methods = set(ep.method)
+    ep_prev = None
+    if args.prev_run:
+        ep_prev = pd.read_parquet(os.path.join(paths.SCORES, args.prev_run, "episodes_all.parquet"), columns=cols)
+        ep_prev = ep_prev[(ep_prev.protocol == PROTO) & ep_prev.episode_id.isin(set(cohort.episode_id))]
     rows, pairs, status_rows = [], [], []
+    pooled = {}                                                        # fold -> matrices for the pooled-cohort pairs
     # identity check A (icde_v11) vs the cached tool beam
     chk = pd.DataFrame()
     if "tool_beam__G3" in set(ep.method):
@@ -119,7 +148,7 @@ def main():
             stem = f"{TAG}_s{s}__G3"
             r_, a_, n_, f_ = mats(ep, stem)
             R.append(r_[0]); A_.append(a_[0]); N_.append(n_[0]); F_.append(f_[0])
-            fb_stem = f"agent_qwen3_fb_s{s}__G3" if TAG == "agent_qwen3" else f"{TAG}_fb_s{s}__G3"
+            fb_stem = next((x for x in (f"{TAG}_fb_s{s}__G3", f"{TAG}_s{s}_fb__G3") if x in methods), f"{TAG}_s{s}_fb__G3")
             rf, af, nf, ff = mats(ep, fb_stem)
             Rfb.append(rf[0]); Afb.append(af[0]); Nfb.append(nf[0]); Ffb.append(ff[0])
             row = dict(row=f"agent_s{s}", fold=fold, label=f"Qwen agent, seed {s}", **rate_row(r_, a_, n_, f_, drivers, args.n_boot))
@@ -155,6 +184,9 @@ def main():
         ao = pool_ade.reindex(ids).to_numpy(); ao = np.where(np.isnan(ao), np.inf, ao)[None]
         rows.append(dict(row="oracle", fold=fold, label="pool oracle (diagnostic)", **rate_row(ro, ao, ~np.isfinite(ao), np.zeros_like(ro), drivers, args.n_boot)))
         for xs in args.extra_stems:                                 # e.g. the seed-vote stem (C-max)
+            if xs not in methods:
+                print(f"extra stem {xs}: not in the scores of {args.run}, skipped")
+                continue
             rx, ax, nx, fx = mats(ep, xs)
             rows.append(dict(row=xs.split("__")[0], fold=fold, label=xs.split("__")[0], **rate_row(rx, ax, nx, fx, drivers, args.n_boot)))
             d = rx - rB
@@ -177,6 +209,30 @@ def main():
             sp = stats.seed_paired(diff, drivers, n_boot=args.n_boot)
             pr.update(ade_med_diff=sp["median"], ade_lo=sp["lo"], ade_hi=sp["hi"])
             pairs.append(pr)
+        pooled[fold] = dict(R=R, A=A_, F=F_, rB=rB, aB=aB, fB=fB, rA=rA, aA=aA, fA=fA, drivers=drivers, ids=ids)
+        # the earlier agent run on the same windows (seed-matched): row agent_prev and pair agent_vs_prev
+        if ep_prev is not None:
+            Rp, Ap = [], []
+            for s in args.seeds:
+                rp, ap_, _, _ = mats(ep_prev, f"{args.prev_tag}_s{s}__G3")
+                Rp.append(rp[0]); Ap.append(ap_[0])
+            Rp, Ap = np.stack(Rp), np.stack(Ap)
+            rows.append(dict(row="agent_prev", fold=fold, label=f"agent of run {args.prev_run} (seeds pooled)", **rate_row(Rp, Ap, ~np.isfinite(Ap), np.zeros_like(Rp), drivers, args.n_boot)))
+            pooled[fold].update(Rp=Rp, Ap=Ap)
+            pairs.append(pair_row("agent_vs_prev", fold, R, A_, Rp, Ap, drivers, args.seeds, args.n_boot))
+    # pooled cohort (both folds): the same pairs over the concatenated windows, drivers stay the clusters
+    if len(pooled) > 1:
+        cat = lambda k: np.concatenate([pooled[f][k] for f in pooled], axis=-1)  # noqa: E731
+        drv = np.concatenate([pooled[f]["drivers"] for f in pooled])
+        for other, (rO, aO) in (("selector", (cat("rB"), cat("aB"))), ("beam", (cat("rA"), cat("aA")))):
+            pairs.append(pair_row(f"agent_vs_{other}", "all", cat("R"), cat("A"), rO, aO, drv, args.seeds, args.n_boot))
+        if ep_prev is not None:
+            pairs.append(pair_row("agent_vs_prev", "all", cat("R"), cat("A"), cat("Rp"), cat("Ap"), drv, args.seeds, args.n_boot))
+        for key, akey, fkey, lab in (("R", "A", "F", "agent"), ("Rp", "Ap", None, "agent_prev"), ("rB", "aB", "fB", "selector"), ("rA", "aA", "fA", "beam")):
+            if key in pooled[next(iter(pooled))]:
+                r_, a_ = cat(key), cat(akey)
+                f_ = cat(fkey) if fkey else np.zeros_like(r_)
+                rows.append(dict(row=lab, fold="all", label=f"{lab}, both folds pooled", **rate_row(r_, a_, ~np.isfinite(a_), f_, drv, args.n_boot)))
     tab = pd.DataFrame(rows)
     if tab.empty:
         raise SystemExit("no rows: check --folds against the cohort manifest")
@@ -185,11 +241,8 @@ def main():
     pd.DataFrame(pairs).to_csv(os.path.join(OUT, f"agent{SUFFIX}_pairs_w05.csv"), index=False)
     if status_rows:
         pd.DataFrame(status_rows).to_csv(os.path.join(OUT, f"agent{SUFFIX}_status_w05.csv"), index=False)
-    if SUFFIX == "":
-        write_tex(tab)
-        write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk)
-    else:
-        write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk, name=f"agent{SUFFIX}_results.md")
+    write_tex(tab, name=f"agent{SUFFIX}.tex", caption=args.tex_caption)
+    write_report(tab, pd.DataFrame(pairs), pd.DataFrame(status_rows) if status_rows else None, chk, name=f"agent{SUFFIX}_results.md")
     show = ["row", "fold", "n", "route_pct", "route_lo", "route_hi", "ade_median", "noout_pct", "cost_reconstructed_med", "tool_calls_mean", "gen_tokens_mean"]
     print(tab[[c for c in show if c in tab]].round(1).to_string(index=False))
     print(pd.DataFrame(pairs)[["pair", "fold", "route_diff_pp", "route_lo_pp", "route_hi_pp", "ade_med_diff", "ade_lo", "ade_hi"]].round(1).to_string(index=False))
@@ -253,6 +306,18 @@ def write_report(tab, pairs, status, chk, name="agent_results.md"):
                 for idx, row in piv.iterrows():
                     L.append(f"| {idx} | " + " | ".join(f"{v:.1f}" for v in row.values) + " |")
                 L.append("")
+    ta = tab[tab.fold == "all"]
+    pa = pairs[pairs.fold == "all"] if len(pairs) else pairs
+    if len(ta) or len(pa):
+        L += [f"## Both folds pooled ({int(ta.iloc[0].n) if len(ta) else ''} windows)", "", "| row | route % [CI] | median ADE m [CI] | no output % |", "|---|---|---|---|"]
+        L += [f"| {r.label} | {r.route_pct:.1f} [{r.route_lo:.1f}, {r.route_hi:.1f}] | {_f(r.ade_median, 0)} [{_f(r.ade_lo, 0)}, {_f(r.ade_hi, 0)}] | {r.noout_pct:.1f} |" for r in ta.itertuples()]
+        L.append("")
+        if len(pa):
+            L += ["| pair | route diff [CI] | per seed | ADE diff [CI] (seeds aggregated) |", "|---|---|---|---|"]
+            for r in pa.itertuples():
+                seeds_r = ", ".join(f"{getattr(r, f'route_diff_s{s}_pp'):+.1f}" for s in (0, 1, 2) if _isfin(getattr(r, f"route_diff_s{s}_pp", None)))
+                L.append(f"| {r.pair} | {r.route_diff_pp:+.1f} [{r.route_lo_pp:+.1f}, {r.route_hi_pp:+.1f}] | {seeds_r} | {_f(r.ade_med_diff)} [{_f(r.ade_lo)}, {_f(r.ade_hi)}] |")
+            L.append("")
     sel = os.path.join(OUT, "agent_selector_val.csv")
     if os.path.exists(sel):
         t = pd.read_csv(sel)
@@ -283,15 +348,17 @@ def fmt_m(x):
     return f"{x:,.0f}".replace(",", "{,}")
 
 
-def write_tex(tab):
+def write_tex(tab, name="agent.tex", caption=None):
     os.makedirs(TEX, exist_ok=True)
     if tab.empty:
         print("no rows: no LaTeX table written")
         return
+    if caption is None:
+        caption = (r"Agent study, supplementary cohort (one five-minute window per held-out drive): beam (A), supervised selector (B), "
+                   r"Qwen3-14B agent (C, three seeds pooled); route recovery, failure-aware median ADE, median reconstructed serial cost; "
+                   r"95\,\% driver-clustered CIs; every window produced an output.")
     lines = [r"\begin{table}[t]\centering\scriptsize\setlength{\tabcolsep}{3.5pt}",
-             r"\caption{Agent study, supplementary cohort (one five-minute window per held-out drive): beam (A), supervised selector (B), "
-             r"Qwen3-14B agent (C, three seeds pooled); route recovery, failure-aware median ADE, median reconstructed serial cost; "
-             r"95\,\% driver-clustered CIs; every window produced an output.}\label{tab:agent}",
+             r"\caption{" + caption + r"}\label{tab:agent}",
              r"\begin{tabular}{llrrrr}\toprule",
              r"fold & method & $n$ & route \% [CI] & ADE m [CI] & cost s \\\midrule"]
     labels = {"beam": "beam (A)", "selector": "selector (B)", "agent": "agent (C)"}
@@ -307,8 +374,9 @@ def write_tex(tab):
         if fold == FOLDS[0][0]:
             lines.append(r"\midrule")
     lines += [r"\bottomrule\end{tabular}\end{table}"]
-    with open(os.path.join(TEX, "agent.tex"), "w") as f:
+    with open(os.path.join(TEX, name), "w") as f:
         f.write("\n".join(lines) + "\n")
+    print(f"LaTeX table -> {os.path.join(TEX, name)}")
 
 
 if __name__ == "__main__":

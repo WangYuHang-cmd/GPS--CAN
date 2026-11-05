@@ -629,12 +629,53 @@ def agent_macros(m):
     if os.path.exists(p):
         r = pd.read_csv(p).set_index("fold").loc["val"]
         m["AgentCohortValN"], m["AgentCohortValDrivers"] = n(r.n_windows), n(r.n_drivers)
-    p = os.path.join(tdir, "agent_w05.csv")
+    for sfx, pre in (("", "Agent"), ("_max", "AgentMax")):           # frozen study -> Agent*, ceiling exploration (C-max) -> AgentMax*
+        _agent_result_macros(m, tdir, sfx, pre, f1)
+    p = os.path.join(tdir, "agent_selector_val.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).itertuples():
+            k = "AgentSelVal" + {"selector_cv": "Sel", "beam1": "Beam", "pf1": "Pf", "ep1": "Ep", "oracle": "Oracle"}.get(r.row, camel(r.row))
+            m[k + "Route"], m[k + "RouteLo"], m[k + "RouteHi"], m[k + "N"] = f"{r.route_pct:.0f}", f"{r.route_lo:.0f}", f"{r.route_hi:.0f}", n(r.n_windows)
+    p = os.path.join(tdir, "agent_selector_max_val.csv")
+    if os.path.exists(p):
+        for r in pd.read_csv(p).itertuples():
+            k = "AgentMaxSelVal" + {"selector_cv": "Sel", "beam1": "Beam", "pf1": "Pf", "ep1": "Ep", "oracle": "Oracle"}.get(r.row, camel(r.row))
+            m[k + "Route"], m[k + "RouteLo"], m[k + "RouteHi"], m[k + "N"] = f"{r.route_pct:.0f}", f"{r.route_lo:.0f}", f"{r.route_hi:.0f}", n(r.n_windows)
+    p = os.path.join(tdir, "agent_identity_check.csv")
+    if os.path.exists(p):
+        r = pd.read_csv(p).iloc[0]
+        m["AgentIdentityN"], m["AgentIdentityMaxDiff"] = n(r.n_common), f"{r.max_abs_ade_diff:.1e}"
+    p = os.path.join(tdir, "agent_live_check.csv")
+    if os.path.exists(p):
+        r = pd.read_csv(p).iloc[0]
+        for col, suf in (("n", "N"), ("ratio_median", "Ratio"), ("live_med_s", "LiveMed"), ("reconstructed_med_s", "ReconMed")):
+            if col in r and np.isfinite(r[col]):
+                m["AgentLive" + suf] = n(r[col]) if suf == "N" else f1(r[col])
+
+
+AGENT_MAX_ROW_TAG = {"agent_prev": "Prev", "agent_qwen3max_vote": "Vote", "agent_qwen3maxcritic_s0": "CriticSeedZero", "agent_qwen3maxcritic_s1": "CriticSeedOne",
+                     "agent_qwen3maxcritic_s2": "CriticSeedTwo", "agent_qwen3maxcritic_vote": "CriticVote"}
+AGENT_PAIR_TAG = {"agent_vs_selector": "LlmVsSel", "agent_vs_beam": "LlmVsBeam", "agent_vs_prev": "LlmVsPrev"}
+
+
+def _agent_pair_tag(pair):
+    if pair in AGENT_PAIR_TAG:
+        return AGENT_PAIR_TAG[pair]
+    for row, tag in AGENT_MAX_ROW_TAG.items():                       # e.g. agent_qwen3max_vote_vs_selector -> VoteVsSel
+        for other, otag in (("_vs_selector", "VsSel"), ("_vs_beam", "VsBeam")):
+            if pair == row + other:
+                return tag + otag
+    return camel(pair)
+
+
+def _agent_result_macros(m, tdir, sfx, pre, f1):
+    """agent{sfx}_w05.csv and agent{sfx}_pairs_w05.csv -> {pre}* macros (rows x folds, pairs x folds, 'all' = both folds pooled)."""
+    p = os.path.join(tdir, f"agent{sfx}_w05.csv")
     if os.path.exists(p):
         t = pd.read_csv(p)
         for r in t.itertuples():
-            tag = AGENT_ROW_TAG.get(r.row, camel(r.row))
-            k = f"Agent{tag}{AGENT_FOLD_TAG.get(r.fold, camel(r.fold))}"
+            tag = AGENT_ROW_TAG.get(r.row) or AGENT_MAX_ROW_TAG.get(r.row) or camel(r.row)
+            k = f"{pre}{tag}{AGENT_FOLD_TAG.get(r.fold, camel(r.fold))}"
             m[k + "Route"], m[k + "RouteLo"], m[k + "RouteHi"] = f"{r.route_pct:.0f}", f"{r.route_lo:.0f}", f"{r.route_hi:.0f}"
             m[k + "Med"], m[k + "MedLo"], m[k + "MedHi"] = m_or_fail(r.ade_median), m_or_fail(r.ade_lo), m_or_fail(r.ade_hi)
             m[k + "NoOut"], m[k + "FdeFive"], m[k + "N"], m[k + "Drivers"] = f1(r.noout_pct), f1(r.fde500_pct), n(r.n), n(r.n_drivers)
@@ -644,7 +685,7 @@ def agent_macros(m):
                              ("same_sel_pct", "SameSel"), ("same_beam1_pct", "SameBeam")):
                 if col in t.columns and np.isfinite(getattr(r, col, np.nan)):
                     v = getattr(r, col)
-                    m[k + suf] = f"{v:.0f}" if suf.startswith("RouteSeed") else f1(v)
+                    m[k + suf] = f"{v:.1f}" if suf.startswith("RouteSeed") else f1(v)
             for col, suf in (("gen_tokens_mean", "Tokens"), ("reasoning_tokens_mean", "ReasonTokens")):
                 if col in t.columns and np.isfinite(getattr(r, col, np.nan)):
                     m[k + suf] = n(getattr(r, col))
@@ -652,11 +693,11 @@ def agent_macros(m):
                 v = getattr(r, col, np.nan)
                 if np.isfinite(v):
                     m[k + "Status" + camel(col[len("status_"):-len("_pct")])] = f1(v)
-    p = os.path.join(tdir, "agent_pairs_w05.csv")
+    p = os.path.join(tdir, f"agent{sfx}_pairs_w05.csv")
     if os.path.exists(p):
         t = pd.read_csv(p)
         for r in t.itertuples():
-            k = "AgentPair" + {"agent_vs_selector": "LlmVsSel", "agent_vs_beam": "LlmVsBeam"}.get(r.pair, camel(r.pair)) + AGENT_FOLD_TAG.get(r.fold, camel(r.fold))
+            k = f"{pre}Pair" + _agent_pair_tag(r.pair) + AGENT_FOLD_TAG.get(r.fold, camel(r.fold))
             m[k + "RouteDiff"], m[k + "RouteLo"], m[k + "RouteHi"] = signed(r.route_diff_pp), signed(r.route_lo_pp), signed(r.route_hi_pp)
             for col, suf in (("ade_med_diff", "MedDiff"), ("ade_lo", "MedLo"), ("ade_hi", "MedHi")):
                 v = getattr(r, col, np.nan)
@@ -669,21 +710,6 @@ def agent_macros(m):
                 if col in t.columns and np.isfinite(getattr(r, col, np.nan)):
                     m[k + "NOutSeed" + st] = n(getattr(r, col))
             m[k + "N"] = n(r.n)
-    p = os.path.join(tdir, "agent_selector_val.csv")
-    if os.path.exists(p):
-        for r in pd.read_csv(p).itertuples():
-            k = "AgentSelVal" + {"selector_cv": "Sel", "beam1": "Beam", "pf1": "Pf", "ep1": "Ep", "oracle": "Oracle"}.get(r.row, camel(r.row))
-            m[k + "Route"], m[k + "RouteLo"], m[k + "RouteHi"], m[k + "N"] = f"{r.route_pct:.0f}", f"{r.route_lo:.0f}", f"{r.route_hi:.0f}", n(r.n_windows)
-    p = os.path.join(tdir, "agent_identity_check.csv")
-    if os.path.exists(p):
-        r = pd.read_csv(p).iloc[0]
-        m["AgentIdentityN"], m["AgentIdentityMaxDiff"] = n(r.n_common), f"{r.max_abs_ade_diff:.1e}"
-    p = os.path.join(tdir, "agent_live_check.csv")
-    if os.path.exists(p):
-        r = pd.read_csv(p).iloc[0]
-        for col, suf in (("n", "N"), ("ratio_median", "Ratio"), ("live_med_s", "LiveMed"), ("reconstructed_med_s", "ReconMed")):
-            if col in r and np.isfinite(r[col]):
-                m["AgentLive" + suf] = n(r[col]) if suf == "N" else f1(r[col])
 
 
 if __name__ == "__main__":

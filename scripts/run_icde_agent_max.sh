@@ -13,7 +13,7 @@ PY=${PYTHON:-${PYTHON:-python3}3}
 RUN=${RUN:-icde_agent_max}
 COHORT=${COHORT:-manifests/icde_agent_cohort.csv}
 CFG=${CFG:-configs/agent_max}
-CONC=${CONC:-12}
+CONC=${CONC:-24}
 LOGS=${CANTRAJ_LOGS:-${CANTRAJ_LOGS:-logs}}
 step=${1:-}; seed=${2:-0}
 run() { echo "$(date '+%F %T') START $*"; nice -n 10 "$PY" "$@" 2>&1 | grep -v -E "UserWarning|from scipy"; echo "$(date '+%F %T') END rc=$?"; }

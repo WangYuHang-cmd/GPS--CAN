@@ -37,6 +37,10 @@ INCLUDE = ["src/cantraj", "scripts", "configs", "specs", "tests", "pytest.ini", 
            "reports/icde/tables/agent_pairs_w05.csv", "reports/icde/tables/agent_status_w05.csv", "reports/icde/tables/agent_cohort_counts.csv",
            "reports/icde/tables/agent_cohort_counts_val.csv", "reports/icde/tables/agent_selector_val.csv", "reports/icde/tables/agent_identity_check.csv",
            "reports/icde/tables/agent_live_check.csv", "reports/icde/tables/agent_pilot_summary.csv",
+           # ceiling exploration of the agent (C-max, exploratory): report, result tables, selector validation and calibration hints
+           "reports/icde/agent_ceiling.md", "reports/icde/agent_max_results.md", "reports/icde/tables/agent_max_w05.csv",
+           "reports/icde/tables/agent_max_pairs_w05.csv", "reports/icde/tables/agent_max_status_w05.csv", "reports/icde/tables/agent_selector_max_val.csv",
+           "reports/icde/tables/agent_max_val_hints.csv",
            # EAB supplementary material (built by scripts/build_supplementary.py; placed under supplementary/ in the release)
            "paper_icde/supplementary/supp.pdf", "paper_icde/supplementary/supp.tex", "paper_icde/supplementary/tables"]
 EXCLUDE_DIRS = {"__pycache__", ".pytest_cache", "_private", ".git"}

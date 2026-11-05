@@ -1,0 +1,10 @@
+fold,seed,status,n,pct
+test,0,submitted,267,99.6268656716418
+test,0,context_overflow,1,0.373134328358209
+test,1,submitted,267,99.6268656716418
+test,1,context_overflow,1,0.373134328358209
+test,2,submitted,268,100.0
+few_shot_heldout,0,submitted,391,100.0
+few_shot_heldout,1,submitted,391,100.0
+few_shot_heldout,2,submitted,390,99.74424552429667
+few_shot_heldout,2,context_overflow,1,0.2557544757033248

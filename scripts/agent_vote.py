@@ -31,6 +31,13 @@ def main():
     ap.add_argument("--selector", default=None)
     args = ap.parse_args()
     res_dir = os.path.join(paths.BENCH, "agent_logs", args.run, "results")
+    present = [s for s in args.seeds if os.path.exists(os.path.join(res_dir, f"{args.tag}_s{s}.csv"))]
+    if len(present) < 2:
+        print(f"{args.tag}: {len(present)} seed result file(s) under {res_dir}; a vote needs at least two, nothing written")
+        return
+    if len(present) < len(args.seeds):
+        print(f"{args.tag}: seeds {sorted(set(args.seeds) - set(present))} have no results, voting over seeds {present}")
+    args.seeds = present
     res = {s: pd.read_csv(os.path.join(res_dir, f"{args.tag}_s{s}.csv")).set_index("episode_id") for s in args.seeds}
     sel = Selector.load(args.selector) if args.selector else None
     cohort = pd.read_csv(args.manifest)

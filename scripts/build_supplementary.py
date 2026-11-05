@@ -19,7 +19,7 @@ from cantraj import paths  # noqa: E402
 
 T = os.path.join(paths.GPS_DIR, "reports", "icde", "tables")
 OUT = os.path.join(paths.GPS_DIR, "paper_icde", "supplementary", "tables")
-FOLD = {"test": "test", "few_shot_heldout": "few-shot", "val": "validation"}
+FOLD = {"test": "test", "few_shot_heldout": "few-shot", "val": "validation", "all": "both folds"}
 WIN = {"w05": "5 min", "w15": "15 min", "full": "whole drive", "w01": "1 min"}
 
 
@@ -243,6 +243,18 @@ def agent():
         rows = [[esc(r.pair), FOLD.get(r.fold, r.fold), m(r.n), f"{r.route_diff_pp:+.1f} [{r.route_lo_pp:+.1f}, {r.route_hi_pp:+.1f}]"] for r in p.itertuples()]
         table("agent_max_pairs.tex", "Ceiling exploration, paired route-recovery differences (percentage points, driver-clustered CIs).", "tab:supp_agent_max_pairs",
               ["pair", "fold", "$n$", "$\\Delta$ route pp [CI]"], rows, "llrr", size="\\scriptsize")
+        sv = os.path.join(T, "agent_selector_max_val.csv")
+        if os.path.exists(sv):
+            d = pd.read_csv(sv)
+            rows = [[esc(r.row), m(r.n_windows), m(r.n_drivers), ci(r.route_pct, r.route_lo, r.route_hi)] for r in d.itertuples()]
+            table("agent_selector_max_val.tex", "Ceiling exploration: the selector over the ten presets and the extended diagnostics on the cached validation windows (cross-fitted by driver).",
+                  "tab:supp_agent_sel_max", ["row", "windows", "drivers", "route \\% [CI]"], rows, "lrrr", size="\\scriptsize")
+        hv = os.path.join(T, "agent_max_val_hints.csv")
+        if os.path.exists(hv):
+            d = pd.read_csv(hv)
+            rows = [[esc(r.kind), esc(r.key), m(r.n), m(r.route_pct, 0)] for r in d.itertuples()]
+            table("agent_max_hints.tex", "Calibration hints given to the C-max controller (validation candidates: share that recovered the route, by tool Top-1 and by diagnostic bin).",
+                  "tab:supp_agent_hints", ["diagnostic", "bin", "candidates", "route \\%"], rows, "llrr", size="\\scriptsize")
 
 
 def prompt_listing():

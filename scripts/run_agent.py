@@ -135,6 +135,7 @@ def main():
     rows = []
     if args.resume and os.path.exists(res_path):
         prev = pd.read_csv(res_path)
+        prev = prev[~prev.status.isin(["llm_error", "context_overflow"])]      # server-side errors are retried on resume
         rows = prev.to_dict("records")
         done = set(prev.episode_id)
     todo = [r for r in cohort.itertuples() if r.episode_id not in done and os.path.exists(os.path.join(cache_dir(root, r), "diagnostics.json"))]

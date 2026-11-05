@@ -66,9 +66,11 @@ def test_toolbox_visibility_rules(cache):
     json.dumps(r)
     assert all(c["id"].startswith("beam-") for c in r["candidates"])
     c1 = r["candidates"][0]
-    assert c1["overlap_with_called_top1"]["pf"].startswith("unknown")
-    assert c1["overlap_with_called_top1"]["ep"].startswith("unknown")
-    assert c1["n_called_tools"] == 0
+    assert "overlap_with_called_top1" not in c1 and "n_called_tools_agree" not in c1     # compact line: nothing about tools not yet run
+    ins0 = tb.inspect_candidate("beam-1")
+    assert ins0["overlap_with_called_top1"]["pf"].startswith("unknown")
+    assert ins0["overlap_with_called_top1"]["ep"].startswith("unknown")
+    assert ins0["n_called_tools"] == 0
     with pytest.raises(ToolError):
         tb.inspect_candidate("pf-1")
     with pytest.raises(ToolError):
@@ -84,7 +86,8 @@ def test_toolbox_visibility_rules(cache):
         assert tb.tool_logical_s == pytest.approx(tb.logical_time("beam") + tb.logical_time("pf"))
         c1 = tb.run_reconstructor("beam")["candidates"][0]
         assert isinstance(c1["overlap_with_called_top1"]["pf"], float)
-        assert c1["overlap_with_called_top1"]["ep"].startswith("unknown")
+        assert "ep" not in c1["overlap_with_called_top1"]                                  # not run: absent from the compact line
+        assert tb.inspect_candidate("beam-1")["overlap_with_called_top1"]["ep"].startswith("unknown")
         assert tb.submit("pf-1") == (True, "submitted")
         assert r2["already_run"] is False
     q = tb.query_local_graph("beam-1", 200.0)
@@ -244,7 +247,8 @@ def test_max_cache_tools_compare_and_score(cache_max):
     with pytest.raises(ToolError):
         tb.compare_candidates(["beam-1", "pf-1"])                 # nothing visible yet
     r = tb.run_reconstructor("beam")
-    assert "dr_dist_first60_m" in r["candidates"][0] and "consensus_tools" not in r["candidates"][0]   # consensus over unrun tools stays hidden
+    assert "dr60_m" in r["candidates"][0] and "consensus_tools" not in r["candidates"][0]   # compact line; consensus over unrun tools stays hidden
+    assert "dr_dist_first60_m" in tb.inspect_candidate("beam-1")                           # the full record keeps the long names
     if diag["tools"]["beam_wide"]["n_candidates"]:
         tb.run_reconstructor("beam_wide")
         cmp_ = tb.compare_candidates(["beam-1", "beam_wide-1"])

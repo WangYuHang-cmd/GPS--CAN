@@ -139,13 +139,17 @@ of the tools it ran plus the tool execution time. \input{tables/agent_live.tex}
 \input{tables/agent_prompt.tex}
 \paragraph{Tool schema and budget}
 \input{tables/agent_schema.tex}
-\IfFileExists{tables/agent_max_rows.tex}{\paragraph{Ceiling exploration} After the frozen study, the same controller was given ten reconstructor
+\IfFileExists{tables/agent_max_rows.tex}{\paragraph{Extended configuration (B$^{+}$ and C$^{+}$ in Table IV of the paper)} After the frozen study, the same controller was given ten reconstructor
 presets (wider and looser beams, four more filter seeds, Elastic Pathing without heading), two further tools (side-by-side
 comparison with the divergence junction; the selector's probability), dead-reckoning shape and junction-consistency
-evidence, calibration hints from the validation drives and a relaxed budget (12 turns, 40 calls, 24{,}576 tokens); a
-critic pass and a three-seed vote were added as variants. These runs are exploratory and reported in full.
+evidence, calibration hints from the validation drives and a relaxed budget (12 turns, 40 calls, 24{,}576 tokens; the
+served context was 16{,}384 tokens); a critic pass and a three-seed vote were added as variants. The configuration was
+specified after the frozen study from validation data only and run once on the same 659 windows; the rows below also
+pair it with the frozen configuration. These runs are exploratory and reported in full.
 \input{tables/agent_max_rows.tex}
-\input{tables/agent_max_pairs.tex}}{}
+\input{tables/agent_max_pairs.tex}
+\IfFileExists{tables/agent_selector_max_val.tex}{\input{tables/agent_selector_max_val.tex}}{}
+\IfFileExists{tables/agent_max_hints.tex}{\input{tables/agent_max_hints.tex}}{}}{}
 
 \section{S6. Recovered windows}
 \begin{figure*}[t]\centering

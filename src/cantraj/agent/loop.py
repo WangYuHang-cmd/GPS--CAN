@@ -198,7 +198,7 @@ def run_agent_episode(toolbox, client, budget: Budget, system_prompt, tools_sche
             if res.status == "running" and final:
                 res.status = "no_submit"
     except LLMError as e:
-        res.status, res.error = "llm_error", str(e)
+        res.status, res.error = ("context_overflow" if "maximum context length" in str(e) else "llm_error"), str(e)
     res.elapsed_s = time.perf_counter() - t_start
     res.messages = messages
     return res

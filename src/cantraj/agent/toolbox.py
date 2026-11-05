@@ -130,14 +130,19 @@ class EpisodeToolBox:
         return out
 
     def _brief(self, cid):
+        """Compact per-candidate line for run_reconstructor (the full record is in inspect_candidate / compare_candidates)."""
         d = self.cache["candidates"][cid]
-        b = dict(id=cid, rank_in_tool=int(cid.rsplit("-", 1)[1]), path_len_m=_r(d["path_len_m"], 0), len_ratio_dev=_r(d["len_ratio_dev"], 3),
-                 hd_abs_rms_deg=_r(d["hd_abs_rms_deg"], 1), hd_drift_rms_deg=_r(d["hd_drift_rms_deg"], 1), turns_path=d["turns_path"],
-                 turns_unmatched=d["turns_unmatched"], uturns=d["uturns"])
-        for k in ("dr_dist_first60_m", "dr_dist_first120_m", "jn_agree", "jn_disagree"):      # C-max caches only
+        b = dict(id=cid, len_ratio_dev=_r(d["len_ratio_dev"], 2), hd_abs_rms_deg=_r(d["hd_abs_rms_deg"], 0), hd_drift_rms_deg=_r(d["hd_drift_rms_deg"], 0),
+                 turns_path=d["turns_path"], turns_unmatched=d["turns_unmatched"], uturns=d["uturns"])
+        for k, kk in (("dr_dist_first60_m", "dr60_m"), ("dr_dist_first120_m", "dr120_m"), ("jn_agree", "jn_agree"), ("jn_disagree", "jn_disagree")):   # C-max caches
             if k in d:
-                b[k] = _r(d[k], 0)
-        b.update(self._cross(cid))
+                b[kk] = _r(d[k], 0)
+        cross = self._cross(cid)
+        if cross["n_called_tools"] > 0:                       # agreement with the Top-1 of the tools already run (others are unknown)
+            b["overlap_with_called_top1"] = {k: v for k, v in cross["overlap_with_called_top1"].items() if not isinstance(v, str)}
+            b["n_called_tools_agree"] = cross["n_called_tools_agree"]
+        if "overlap_with_own_top1" in cross:
+            b["overlap_with_own_top1"] = cross["overlap_with_own_top1"]
         return b
 
     def _check_visible(self, cid):
@@ -198,7 +203,7 @@ class EpisodeToolBox:
         cids = [str(c).strip() for c in cids]
         for c in cids:
             self._check_visible(c)
-        table = {c: self._brief(c) for c in cids}
+        table = {c: dict(self._brief(c), end_east_m=_r(self.cache["candidates"][c]["end_east_m"], 0), end_north_m=_r(self.cache["candidates"][c]["end_north_m"], 0)) for c in cids}
         pairs = []
         for i in range(len(cids)):
             for j in range(i + 1, len(cids)):
