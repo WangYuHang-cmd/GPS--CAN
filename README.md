@@ -14,7 +14,7 @@ GPS-denied localisation task, with one frozen protocol set, one evaluation engin
 * Package `src/cantraj`: data layer (`io`, `episodes`, `events`, `inputs`), signal whitelist (`registry`), causal replay
   (`replay`), metrics and scoring, baselines (`baselines/`), map graphs (`maps/`), learned motion models (`learn/`).
 * Configs `configs/`: signal registry with provenance classes, signal groups G1 to G8, eight protocols, windows.
-* Data: the gated Hugging Face dataset `HenryYHW/DriveDNA-GPS` (GPS reference, native CAN / IMU event tables, the
+* Data: the gated Hugging Face dataset `HenryYHW/CANTraj` (formerly `HenryYHW/DriveDNA-GPS`; GPS reference, native CAN / IMU event tables, the
   `benchmark/` manifests and per-episode scores) plus the DriveDNA release for the 10 Hz grid tables. See `ENVIRONMENT.md`.
 
 ## Install

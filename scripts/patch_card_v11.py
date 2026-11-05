@@ -28,7 +28,7 @@ from stage_benchmark_release import gate_text  # noqa: E402
 GPS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STAGING = "/data/backup/DriveDNA-GPS_hf"
 CODE = "https://github.com/WangYuHang-cmd/GPS--CAN"
-RUN = "v1_1"                                    # published folder name of run icde_v11
+RUN = "icde_v11"                                # published folder name = run id icde_v11 (same layout as the reproduction package)
 OLD_MARK = "## 🧭 CAN-to-GPS benchmark v1 (`benchmark/`)"
 NEW_MARK = "## 🧭 CAN-to-GPS benchmark (`benchmark/`), version 1.1"
 NEXT = "## 🔗 Relation to DriveDNA and DriveDNA-Controlled"

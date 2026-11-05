@@ -20,7 +20,7 @@ os.environ.setdefault("HF_HUB_DISABLE_UPDATE_CHECK", "1")
 
 from huggingface_hub import DatasetCard, HfApi, hf_hub_download  # noqa: E402
 
-REPO = "HenryYHW/DriveDNA-GPS"
+REPO = "HenryYHW/CANTraj"   # renamed from HenryYHW/DriveDNA-GPS on 2026-11-05 (the Hub redirects the old name)
 STAGING = "/data/backup/DriveDNA-GPS_hf"
 FOLDER = os.path.join(STAGING, "benchmark")
 
@@ -36,7 +36,7 @@ def sha256(path):
 def cmd_readme(api, args):
     DatasetCard.load(os.path.join(STAGING, "README.md")).validate(repo_type="dataset")
     r = api.upload_file(path_or_fileobj=os.path.join(STAGING, "README.md"), path_in_repo="README.md", repo_id=REPO, repo_type="dataset",
-                        commit_message="Add the CAN-to-GPS benchmark v1 section (benchmark/ folder) to the dataset card")
+                        commit_message="Dataset card: CANTraj-Bench version 1.1 section, agent study and reports")
     print("README uploaded:", r)
 
 
@@ -45,6 +45,19 @@ def cmd_upload(api, args):
     r = api.upload_folder(folder_path=FOLDER, path_in_repo="benchmark", repo_id=REPO, repo_type="dataset",
                           commit_message="CAN-to-GPS benchmark v1: manifests, frozen configuration and per-episode scores")
     print(f"upload_folder finished in {time.time() - t0:.0f}s: {r}", flush=True)
+
+
+def cmd_upload_large(api, args):
+    """Resumable upload of benchmark/ through a hard-linked root (upload_large_folder has no path_in_repo)."""
+    import shutil, subprocess
+    root = "/data/backup/DriveDNA-GPS_up"
+    if os.path.isdir(os.path.join(root, "benchmark")):
+        shutil.rmtree(os.path.join(root, "benchmark"))
+    os.makedirs(root, exist_ok=True)
+    subprocess.run(["cp", "-al", FOLDER, os.path.join(root, "benchmark")], check=True)
+    t0 = time.time()
+    api.upload_large_folder(repo_id=REPO, repo_type="dataset", folder_path=root, num_workers=4, print_report_every=60)
+    print(f"upload_large_folder finished in {time.time() - t0:.0f}s", flush=True)
 
 
 def cmd_check(api, args):
@@ -63,10 +76,10 @@ def cmd_check(api, args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["readme", "upload", "check"])
+    ap.add_argument("cmd", choices=["readme", "upload", "upload_large", "check"])
     args = ap.parse_args()
     api = HfApi()
-    {"readme": cmd_readme, "upload": cmd_upload, "check": cmd_check}[args.cmd](api, args)
+    {"readme": cmd_readme, "upload": cmd_upload, "upload_large": cmd_upload_large, "check": cmd_check}[args.cmd](api, args)
 
 
 if __name__ == "__main__":
