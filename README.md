@@ -95,7 +95,7 @@ python scripts/icde_figures.py --figs cdf topk horizon robust && python scripts/
 released tables and the paper's number macros): the reproduction package and commands, the benchmark definitions, the
 method reproduction details, the complete result tables and the figures the page limit left out, the agent study's
 protocol, prompts and per-configuration results, and further recovered windows. Data, scores, configurations, logs and
-weights: https://huggingface.co/datasets/CVPRICCVICML/GPS_Reconstruction
+weights: https://huggingface.co/datasets/HenryYHW/CANTraj
 
 Agent study (supplementary cohort: one map-ok five-minute window per held-out drive; `reports/icde/agent_protocol_v1.md` is the
 frozen protocol, `reports/icde/agent_results.md` the results report). The LLM is served by vLLM on a GPU host and reached through
