@@ -34,6 +34,18 @@ def main():
     rel = gm[(gm.status == "ok") & (gm["set"] == "main")]
     m["NReleaseDrives"], m["NReleaseDrivers"] = n(len(rel)), n(rel.driver.nunique())
     m["NReleaseHours"] = n((rel.trim_hi_s - rel.trim_lo_s).clip(lower=0).sum() / 3600.0)
+    # released drives the benchmark does not use: no admissible anchor, no eligible window, or unconfirmed platform
+    key = lambda d: d.driver.astype(str) + "/" + d.drive.astype(str)
+    rel_keys, any_keys, elig_keys = set(key(rel)), set(key(man)), set(key(e))
+    unused = rel_keys - elig_keys
+    no_anchor = unused - any_keys
+    rest = man[key(man).isin(unused - no_anchor)]
+    adm = rest.groupby(key(rest)).admission.agg(lambda s: set(s))
+    platform_only = {k for k, a in adm.items() if a == {"platform_unconfirmed"}}
+    window_only = {k for k, a in adm.items() if a == {"ineligible_window"}}
+    both = set(adm.index) - platform_only - window_only
+    m["NReleaseUnusedDrives"], m["NReleaseNoAnchorDrives"] = n(len(unused)), n(len(no_anchor))
+    m["NReleaseNoWindowDrives"], m["NReleasePlatformDrives"] = n(len(window_only)), n(len(platform_only) + len(both))
     m["NKm"] = n(full.path_len_m.sum() / 1000.0)
     m["NDrivesQcom"] = n((dr.gps_source == "qcomdiag").sum())
     m["NDrivesUblox"] = n(dr.gps_source.astype(str).str.contains("ublox").sum())
