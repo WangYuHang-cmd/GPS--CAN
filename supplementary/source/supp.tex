@@ -7,6 +7,9 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{float}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
@@ -32,13 +35,13 @@ per-configuration results of the supplementary agent study (S5), and further rec
 \section{S1. Reproduction package}
 The code repository holds the \texttt{cantraj} package (data layer, signal whitelist, causal replay, metrics and
 scoring, baselines, map graphs, learned motion models, the agent study), the scripts that run every experiment and
-build every table and figure, the frozen configuration (\texttt{configs/}: benchmark thresholds and manifest hashes,
-signal registry with provenance classes, signal groups, protocols, windows, agent prompts and budgets), the
+build every table and figure, the fixed configuration (\texttt{configs/}: benchmark thresholds and manifest hashes,
+signal catalogue with provenance classes, signal groups, protocols, windows, agent prompts and budgets), the
 specification of benchmark v1 and the test suite (139 tests on synthetic data). The data package holds CANTraj
 (\NReleaseDrives{} drives of \NReleaseDrivers{} drivers: re-decoded CAN event streams at logged times, the aligned GNSS
 reference with the first and last two minutes of every drive cut, quality metadata and driver-disjoint splits), the
 benchmark manifests (episodes, map-start rule, tile list with md5 and snapshot date, cohorts), every per-episode score
-of every run, the run registry with code, scorer and tile hashes, the agent study's configuration and conversation
+of every run, the experiment log with code, scorer and tile hashes, the agent study's configuration and conversation
 logs, the map tiles and the learned models' weights.
 
 \paragraph{Rebuilding the tables} From the released per-episode scores alone: copy the package's \texttt{tables/} and
@@ -54,6 +57,7 @@ regenerated, not shipped. The agent study needs a served Qwen3-14B (revision pin
 OpenAI-compatible endpoint; \texttt{scripts/h100\_setup.sh} installs and serves it, \texttt{run\_icde\_agent.sh} runs
 the cache, the selector, the three seeds, the scoring and the tables.
 
+\input{../tables/methods.tex}
 \section{S2. Benchmark definitions}\label{sec:problem}
 \paragraph{Episodes and eligibility} Windows of 60, 300 and 900\,s and whole drives tile each drive from its first
 reference fix; a window starts at an anchor fix (speed $\ge 3$\,m/s, bearing accuracy within 5$^\circ$, horizontal
@@ -61,20 +65,19 @@ accuracy under 10\,m, CAN speed $\ge 2.5$\,m/s) and is eligible when it has at l
 reference gap over 30\,s and a path of at least 100\,m. Drives with an unconfirmed vehicle platform and the controlled
 supplement stay out of the main board. The map-start rule of v1.1 requires a drivable edge within 400\,m of the start
 in the visible map; windows that fail it are reported separately and never counted against a method.
-\paragraph{Splits} Driver-disjoint folds: train, validation, test and few-shot held-out (\NHeldoutDrives{} held-out drives
+\paragraph{Splits} Driver-disjoint folds: train, validation, test and few-shot (\NHeldoutDrives{} evaluation drives
 of \NHeldoutDrivers{} drivers). Parameters and models use train and validation only.
 \paragraph{Signals and provenance} Signal sets S1 (speed), S2 (speed and pedals), S3 (speed and steering) and S4 (all);
 groups G1 to G8 whitelist columns and static parameters; every signal carries a provenance class (bus-read, derived in
 the vehicle software, logger sensor, GPS-informed), and class-F references are never in the CAN-only board.
 \paragraph{Protocols} Online or offline access, map or no map, start heading given or withheld; the visible map is the
-disc of radius $5\,\mathrm{km} + 40\,\mathrm{m/s} \cdot D$ (at most 60\,km) around the start, enforced per window.
+disc of radius $5\,\mathrm{km} + 40\,\mathrm{m/s} \cdot D$ (at most 60\,km) around the start, enforced per window. OPD-II uses its Valhalla regions within 200\,m of the reconstructed trace; the area adaptations receive a 5\,km square centred on the start. The paper evaluates five of the eight protocol combinations.
 \paragraph{Metrics} ADE and FDE at the reference seconds, coverage within 10 to 500\,m, time-free path recall and
 precision at 25, 50 and 100\,m, route recovery (path recall at 50\,m $\ge 0.8$), terminal excursion and tail-lost
 flags; an expected window without output is a failure (ADE $+\infty$, rates 0); medians carry driver-clustered
 bootstrap intervals (1{,}000 resamples); paired differences are computed on common windows.
 
 \section{S3. Methods}\label{sec:methods}
-\input{../tables/methods.tex}
 The six published methods were re-implemented from their papers and, where available, checked against the authors'
 released code on the authors' own samples (OPD-II: \OpdSampleLogs{} of 59 logs within a median of at most
 \OpdSampleMaxMedian{}\,m of the unmodified script; MacroTracking: the sample trace within a median of
@@ -88,6 +91,12 @@ noise of 15 and 20$^\circ$) and the offline map beam search (beam 200, ten candi
 50\,m start radius, 10\,m merge bins, temperature 1), as given in Algorithm~1 of the paper. The learned motion models
 (a GRU and a physics residual, three seeds) are trained on the training fold only with validation early stopping.
 
+% Keep the detailed tables with their section headings and in source order.
+% A single-column layout leaves the full page width available for these tables.
+\onecolumn
+\raggedbottom
+\renewenvironment{table*}[1][]{\begin{table}[H]}{\end{table}}
+\renewenvironment{figure*}[1][]{\begin{figure}[H]}{\end{figure}}
 \section{S4. Complete results}
 \input{tables/main_w05.tex}
 \input{tables/main_w15.tex}
@@ -97,13 +106,13 @@ noise of 15 and 20$^\circ$) and the offline map beam search (beam 200, ten candi
 \input{tables/signal_gains.tex}
 \input{tables/topk.tex}
 \begin{figure*}[t]\centering
-\includegraphics[width=0.8\textwidth]{fig_topk_w05.pdf}
+\includegraphics[width=\textwidth]{fig_topk_w05.pdf}
 \caption{Best of the first $K$ candidates (whole-path oracle median ADE and per-second union coverage within 100\,m) for
 the offline beam with and without steering and for Elastic Pathing and Dewri et al., five-minute windows.}
 \end{figure*}
 \input{tables/robustness_map.tex}
-\begin{figure}[t]\centering
-\includegraphics[width=0.9\columnwidth]{fig_robust_w05.pdf}
+\begin{figure}[H]\centering
+\includegraphics[width=\columnwidth]{fig_robust_w05.pdf}
 \caption{Fixed map attacks on degraded inputs: change in the five-minute route recovery rate against the clean signal on
 the same windows (percentage points; 95\,\% driver-clustered CIs; filled: test, hollow: few-shot drivers); every level of
 the grid fixed before the first run; the 0.5\,s delay is a timing probe.}
@@ -121,11 +130,12 @@ the grid fixed before the first run; the 0.5\,s delay is a timing probe.}
 \input{tables/controlled.tex}
 \input{tables/area.tex}
 
+\clearpage
 \section{S5. Agent study}
-The supplementary agent study (Section VI of the paper) compares, on one five-minute window per held-out drive
+The supplementary agent study (Section VI of the paper) compares, on one five-minute window per evaluation drive
 (\AgentCohortTestN{} test windows of \AgentCohortTestDrivers{} drivers, \AgentCohortFewShotN{} few-shot windows of
 \AgentCohortFewShotDrivers{} drivers), the offline beam (A), a supervised selector over the three reconstructors (B)
-and a Qwen3-14B tool-calling controller (C). The protocol was frozen after a validation pilot
+and a Qwen3-14B tool-calling controller (C). The protocol was fixed after a validation pilot
 (\texttt{reports/agent\_protocol\_v1.md}): model revision, sampling, prompt, tool schema, budget, selector weights
 and cohort hashes are recorded there; every window of every seed received a valid choice. Tables~\ref{tab:supp_agent}
 to~\ref{tab:supp_agent_pilot} give every row.
@@ -139,38 +149,42 @@ of the tools it ran plus the tool execution time. \input{tables/agent_live.tex}
 \input{tables/agent_prompt.tex}
 \paragraph{Tool schema and budget}
 \input{tables/agent_schema.tex}
-\IfFileExists{tables/agent_max_rows.tex}{\paragraph{Extended configuration (B$^{+}$ and C$^{+}$ in Table IV of the paper)} After the frozen study, the same controller was given ten reconstructor
+\IfFileExists{tables/agent_max_rows.tex}{\paragraph{Extended configuration (B$^{+}$ and C$^{+}$ in the paper's agent table)} After the fixed study, the same controller was given ten reconstructor
 presets (wider and looser beams, four more filter seeds, Elastic Pathing without heading), two further tools (side-by-side
 comparison with the divergence junction; the selector's probability), dead-reckoning shape and junction-consistency
 evidence, calibration hints from the validation drives and a relaxed budget (12 turns, 40 calls, 24{,}576 tokens; the
 served context was 16{,}384 tokens); a critic pass and a three-seed vote were added as variants. The configuration was
-specified after the frozen study from validation data only and run once on the same 659 windows; the rows below also
-pair it with the frozen configuration. These runs are exploratory and reported in full.
+specified after the fixed study from validation data only and run once on the same 659 windows; the rows below also
+pair it with the fixed configuration. These runs are exploratory and reported in full.
 \input{tables/agent_max_rows.tex}
 \input{tables/agent_max_pairs.tex}
 \IfFileExists{tables/agent_selector_max_val.tex}{\input{tables/agent_selector_max_val.tex}}{}
 \IfFileExists{tables/agent_max_hints.tex}{\input{tables/agent_max_hints.tex}}{}}{}
 
+\clearpage
 \section{S6. Recovered windows}
 \begin{figure*}[t]\centering
-\includegraphics[width=0.9\textwidth]{fig_examples_w05.pdf}
-\caption{Six held-out five-minute windows recovered by the offline beam and the online filter (speed, steering, start and
+\includegraphics[width=.75\textwidth,trim=0 28 263.808 0,clip]{fig_examples_w05.pdf}\\[5pt]
+\includegraphics[width=.75\textwidth,trim=263.808 28 0 0,clip]{fig_examples_w05.pdf}\\[3pt]
+\includegraphics[width=.95\textwidth,trim=0 0 0 160,clip]{fig_examples_w05.pdf}
+\caption{Six evaluation five-minute windows recovered by the offline beam and the online filter (speed, steering, start and
 heading known) below their camera frames at mid-window (not an input); grey: roads; numbers: ADE.}
 \end{figure*}
 \begin{figure*}[t]\centering
-\includegraphics[width=0.8\textwidth]{fig_method.pdf}
-\caption{The pipeline on one held-out window: CAN signals, start, heading and visible roads in; candidate paths; scoring
+\includegraphics[width=\textwidth]{fig_method.pdf}
+\caption{The pipeline on one evaluation window: CAN signals, start, heading and visible roads in; candidate paths; scoring
 at the reference seconds.}
 \end{figure*}
 \begin{figure*}[t]\centering
-\includegraphics[width=0.75\textwidth]{fig_cdf_w05.pdf}
+\includegraphics[width=\textwidth]{fig_cdf_w05.pdf}
 \caption{ADE distributions of the main rows on five-minute windows.}
 \end{figure*}
 \begin{figure*}[t]\centering
-\includegraphics[width=0.75\textwidth]{fig_horizon_cohort.pdf}
+\includegraphics[width=\textwidth]{fig_horizon_cohort.pdf}
 \caption{Same-cohort horizon study: median ADE 1, 5 and 15 minutes after the start with driver-resampling bands.}
 \end{figure*}
 
+\clearpage
 \bibliographystyle{IEEEtran}
 \bibliography{../refs}
 \end{document}
