@@ -7,7 +7,7 @@
 # platform names). Usage: run_icde_supp.sh. Do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 GATE_MB=${GATE_MB:-12000}
 WORKERS=${WORKERS:-3}
 BASE="--run icde_supp --version v1.1 --manifest manifests/episode_manifest_v1.parquet --folds supplement --episodes-file manifests/icde_supplement_episodes.csv --wins w05 --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11_supp.parquet --resume --flush-min 15 --workers $WORKERS"

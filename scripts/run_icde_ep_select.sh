@@ -4,7 +4,7 @@
 # variant), run icde_dev; then score and pick by median ADE. Do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 COMMON="--group G1 --run icde_dev --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds val --wins w05 --drives-file manifests/icde_val_select_drives.csv --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --workers 3 --flush-min 0 --resume"
 for f in 0.15 0.3 0.5 0.7; do
   for vz in 0.3 0.5 1.0; do

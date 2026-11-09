@@ -5,7 +5,7 @@
 # v_zero = 1.0), compared with the selection run elastic_pathing_hp_f015v10. Then scored on val. Do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 COMMON="--group G1 --run icde_dev --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds val --wins w05 --drives-file manifests/icde_val_select_drives.csv --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --workers 2 --flush-min 0 --resume"
 for s in 1 2 3; do
   echo "$(date '+%F %T') START tie_seed=$s"

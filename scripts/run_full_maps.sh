@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 PY="nice -n 10 ionice -c2 -n7 ${PYTHON:-python3} -B"
 WORKERS=${WORKERS:-6}
-export PYTHONPATH=$OPENPILOT_DIR
+export PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
 M=manifests/episode_manifest_v1.parquet
 FOLDS=${*:-val test few_shot_heldout train}
 LOG=${CANTRAJ_LOGS:-logs}/can2gps_full_v1_maps.log

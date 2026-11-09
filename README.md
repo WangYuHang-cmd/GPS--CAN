@@ -21,8 +21,8 @@ GPS-denied localisation task, with one frozen protocol set, one evaluation engin
 
 ```
 pip install -r requirements.txt            # Python 3.12; torch only for training the learned baselines
-export CANTRAJ_BENCH=/path/to/cache CANTRAJ_GPS=/path/to/DriveDNA-GPS CANTRAJ_DRIVEDNA=/path/to/DriveDNA
-export CANTRAJ_MANIFESTS=/path/to/DriveDNA-GPS/benchmark/manifests   # the manifests folder of the gated dataset's benchmark/
+export CANTRAJ_BENCH=/path/to/cache CANTRAJ_GPS=/path/to/CANTraj CANTRAJ_DRIVEDNA=/path/to/DriveDNA
+export CANTRAJ_MANIFESTS=/path/to/CANTraj/benchmark/manifests   # the manifests folder of the gated dataset's benchmark/
 export PYTHONPATH=$PWD/src
 pytest -q                                   # 125 tests: synthetic line / circle, whitelist, raw-event causality, metrics,
                                             # map filter and beam on a synthetic grid, learned wrapper, perturbations, warm start,
@@ -89,13 +89,44 @@ python scripts/icde_spy_dewri_diag.py && python scripts/failure_analysis.py --ru
 python scripts/icde_figures.py --figs cdf topk horizon robust && python scripts/icde_macros.py && python scripts/registry.py
 ```
 
+## Trained models (`models/learn/`)
+
+The weights of every learned component are released with the code (24 models, 73 files, 3.3 MB): the learned motion
+sources `gru`, `resid` and `resid_nogru` (three seeds each) and `gru_aug05` (one seed; the GRU retrained with 0.5 m/s
+Gaussian speed noise for the v1 robustness tables), and the signal-set models `sig/S1`, `sig/S2c`, `sig/S3`, `sig/S4c`
+(three seeds each) and `sig/S2b`, `sig/S4b` (one seed; pedal-pressed flags instead of continuous pedals), with
+`sig/brand_scales.json`. Each model directory holds `weights.npz` and `meta.json` (all that inference needs: the map
+filter and the signal-set baselines load them with NumPy) and `model.pt` (the PyTorch state dict, saved from GPU tensors;
+load it with `map_location="cpu"` on a machine without CUDA). The run scripts expect them in the cache:
+
+```
+mkdir -p "$CANTRAJ_BENCH/models" && cp -r models/learn "$CANTRAJ_BENCH/models/"   # run_icde_learned.sh: --ckpt $CANTRAJ_BENCH/models/learn/<kind>/seed<s>
+```
+
+Retraining (GPU) starts from scratch and needs the learning cache first (`python scripts/build_learn_cache.py --workers 6`,
+train and val folds); `run_learned.sh` writes its log under `CANTRAJ_LOGS` (default `logs/`, create it first). The training
+scripts write to the same `$CANTRAJ_BENCH/models/learn/<kind>/seed<s>` directories that the copy above fills: the motion
+commands overwrite a released model in place and `train_sig.py train` skips every seed directory that already holds a
+`meta.json`, so retrain into a scratch cache (another `CANTRAJ_BENCH`) or move the released `models/learn/` aside first.
+The commands below use the settings the released models were trained with (30 epochs for the motion models, 15 epochs and
+150 steps per epoch for the signal-set models):
+
+```
+MODE=train scripts/run_learned.sh                                                    # gru, resid, resid_nogru; seeds 0, 1, 2
+python scripts/train_motion.py --model gru --seed 0 --augment-speed-noise 0.5 --out "$CANTRAJ_BENCH/models/learn/gru_aug05/seed0"
+python scripts/train_sig.py cache && python scripts/train_sig.py train --epochs 15   # S1, S2c, S3, S4c; seeds 0, 1, 2
+python scripts/train_sig.py train --groups S2b S4b --seeds 0 --epochs 15             # the pedal-flag variants
+```
+
+The same files are published in the data repository under `models/learn/`.
+
 ## Supplementary material (ICDE 2027 EAB)
 
 `supplementary/supplementary.pdf` (sources in `supplementary/source/`, built by `scripts/build_supplementary.py` from the
 released tables and the paper's number macros): the reproduction package and commands, the benchmark definitions, the
 method reproduction details, the complete result tables and the figures the page limit left out, the agent study's
 protocol, prompts and per-configuration results, and further recovered windows. Data, scores, configurations, logs and
-weights: https://huggingface.co/datasets/HenryYHW/CANTraj
+weights: https://huggingface.co/datasets/HenryYHW/CANTraj (the weights are also in this repository, `models/learn/`)
 
 Agent study (supplementary cohort: one map-ok five-minute window per held-out drive; `reports/icde/agent_protocol_v1.md` is the
 frozen protocol, `reports/icde/agent_results.md` the results report). The LLM is served by vLLM on a GPU host and reached through

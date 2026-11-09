@@ -9,7 +9,7 @@
 #   bash scripts/run_icde_agent_max.sh tables         # agent_max_*.csv, agent_max_results.md
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 RUN=${RUN:-icde_agent_max}
 COHORT=${COHORT:-manifests/icde_agent_cohort.csv}
 CFG=${CFG:-configs/agent_max}

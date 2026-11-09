@@ -1,0 +1,332 @@
+{
+ "kind": "sig",
+ "group": "S1",
+ "seed": 1,
+ "vocab": {
+  "platform": {
+   "AUDI_A4_4TH_GEN": 1,
+   "CHEVROLET_BOLT_ACC_2022_2023_PEDAL": 2,
+   "CHEVROLET_BOLT_EUV": 3,
+   "CHEVROLET_BOLT_EUV_2022": 4,
+   "CHEVROLET_EQUINOX": 5,
+   "CHEVROLET_EQUINOX_2019": 6,
+   "CHEVROLET_SILVERADO": 7,
+   "CHEVROLET_VOLT_ASCM": 8,
+   "FORD_F_150_LIGHTNING_1ST_GEN": 9,
+   "FORD_MAVERICK_1ST_GEN": 10,
+   "FORD_MAVERICK_MK1": 11,
+   "FORD_MUSTANG_MACH_E_MK1": 12,
+   "GENESIS_G70_1ST_GEN_FACELIFT": 13,
+   "GENESIS_G70_2020": 14,
+   "HONDA_ACCORD": 15,
+   "HONDA_CIVIC_BOSCH": 16,
+   "HONDA_CLARITY": 17,
+   "HONDA_CLARITY_2018": 18,
+   "HONDA_HRV_3G": 19,
+   "HONDA_HRV_EHEV_2022": 20,
+   "HONDA_HR_V_EHEV_2022": 21,
+   "HONDA_ODYSSEY_2018": 22,
+   "HYUNDAI_ELANTRA_2024": 23,
+   "HYUNDAI_IONIQ_5": 24,
+   "HYUNDAI_IONIQ_5_2022": 25,
+   "HYUNDAI_IONIQ_5_PE": 26,
+   "HYUNDAI_IONIQ_ELECTRIC_2020": 27,
+   "HYUNDAI_IONIQ_EV_LTD": 28,
+   "HYUNDAI_IONIQ_PHEV_2020": 29,
+   "HYUNDAI_KONA_2020": 30,
+   "HYUNDAI_KONA_2022": 31,
+   "HYUNDAI_KONA_ELECTRIC_2019": 32,
+   "HYUNDAI_PALISADE_2023": 33,
+   "HYUNDAI_SANTA_FE": 34,
+   "HYUNDAI_SANTA_FE_2019": 35,
+   "HYUNDAI_SANTA_FE_2022": 36,
+   "HYUNDAI_SONATA": 37,
+   "KIA_EV6": 38,
+   "KIA_EV6_2022": 39,
+   "KIA_EV9": 40,
+   "KIA_NIRO_EV_2020": 41,
+   "KIA_NIRO_EV_2ND_GEN": 42,
+   "KIA_SPORTAGE_PLUG_IN_HYBRID_5TH_GEN": 43,
+   "KIA_STINGER": 44,
+   "MAZDA_CX_5_2022": 45,
+   "PORSCHE_MACAN_MK1": 46,
+   "RIVIAN_R1_GEN1": 47,
+   "SUBARU_CROSSTREK_2024": 48,
+   "TESLA_AP3_MODEL3": 49,
+   "TESLA_AP3_MODELY": 50,
+   "TESLA_AP3_MODEL_3": 51,
+   "TESLA_MODEL_S_RAVEN": 52,
+   "TESLA_MODEL_X": 53,
+   "TESLA_MODEL_Y": 54,
+   "TOYOTA_RAV4_PRIME": 55,
+   "VOLKSWAGEN_ATLAS_1ST_GEN": 56,
+   "VOLKSWAGEN_GOLF_MK7": 57,
+   "VOLKSWAGEN_JETTA_7TH_GEN": 58,
+   "VOLKSWAGEN_JETTA_MK7": 59,
+   "VOLKSWAGEN_SHARAN_2ND_GEN": 60,
+   "VOLKSWAGEN_SHARAN_MK2": 61
+  },
+  "brand": {
+   "AUDI": 1,
+   "CHEVROLET": 2,
+   "FORD": 3,
+   "GENESIS": 4,
+   "HONDA": 5,
+   "HYUNDAI": 6,
+   "KIA": 7,
+   "MAZDA": 8,
+   "PORSCHE": 9,
+   "RIVIAN": 10,
+   "SUBARU": 11,
+   "TESLA": 12,
+   "TOYOTA": 13,
+   "VOLKSWAGEN": 14
+  }
+ },
+ "scales": {
+  "HONDA": [
+   0.0,
+   954.0,
+   1.59375
+  ],
+  "HYUNDAI": [
+   0.0,
+   0.5702760219573975,
+   null
+  ],
+  "CHEVROLET": [
+   0.0,
+   102.74756622314453,
+   46.0
+  ],
+  "VOLKSWAGEN": [
+   0.0,
+   1366.6666259765625,
+   0.1348000019788742
+  ],
+  "FORD": [
+   0.0,
+   0.3580000102519989,
+   null
+  ],
+  "TESLA": [
+   0.0,
+   0.4440000057220459,
+   null
+  ],
+  "AUDI": [
+   0.0,
+   0.4519999921321869,
+   0.07800000160932541
+  ],
+  "KIA": [
+   0.0,
+   0.5137255191802979,
+   null
+  ],
+  "GENESIS": [
+   0.0,
+   0.3945060074329376,
+   null
+  ],
+  "PORSCHE": [
+   0.0,
+   0.5080000162124634,
+   0.05947199836373329
+  ],
+  "MAZDA": [
+   0.0,
+   816.0,
+   205.0
+  ],
+  "RIVIAN": [
+   0.0,
+   0.23399999737739563,
+   0.09000000357627869
+  ],
+  "SUBARU": [
+   0.0,
+   0.5354902148246765,
+   null
+  ],
+  "TOYOTA": [
+   0.0,
+   1.0,
+   null
+  ]
+ },
+ "norm": {
+  "mean": [
+   1.527154564857483,
+   -0.008566516451537609,
+   0.11789874732494354,
+   0.0,
+   0.0,
+   0.5148196816444397,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "std": [
+   1.0093560218811035,
+   0.23002786934375763,
+   0.13392090797424316,
+   1.0,
+   1.0,
+   0.4981725811958313,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ]
+ },
+ "history": [
+  {
+   "epoch": 0,
+   "train_loss": 947.92609375,
+   "val_loss": 10035.152099609375,
+   "val_ade_300s": 1008.3577270507812,
+   "val_mag": 0.006607937975786626,
+   "secs": 17.996578693389893
+  },
+  {
+   "epoch": 1,
+   "train_loss": 920.3934509277344,
+   "val_loss": 9958.606689453125,
+   "val_ade_300s": 1000.6944885253906,
+   "val_mag": 0.005463116918690503,
+   "secs": 13.988831043243408
+  },
+  {
+   "epoch": 2,
+   "train_loss": 918.4895198567708,
+   "val_loss": 9982.6318359375,
+   "val_ade_300s": 1003.1018524169922,
+   "val_mag": 0.0032172768260352314,
+   "secs": 13.659597158432007
+  },
+  {
+   "epoch": 3,
+   "train_loss": 921.0661942545573,
+   "val_loss": 9910.237548828125,
+   "val_ade_300s": 995.8748016357422,
+   "val_mag": 0.0019204149721190333,
+   "secs": 12.713201522827148
+  },
+  {
+   "epoch": 4,
+   "train_loss": 905.3967134602865,
+   "val_loss": 10302.293212890625,
+   "val_ade_300s": 1035.0804748535156,
+   "val_mag": 0.001380312052788213,
+   "secs": 12.29444432258606
+  },
+  {
+   "epoch": 5,
+   "train_loss": 1751.468106282552,
+   "val_loss": 10658.01904296875,
+   "val_ade_300s": 1070.647201538086,
+   "val_mag": 0.0012039793364237994,
+   "secs": 16.960633993148804
+  },
+  {
+   "epoch": 6,
+   "train_loss": 1766.6937679036457,
+   "val_loss": 10139.499755859375,
+   "val_ade_300s": 1018.7915649414062,
+   "val_mag": 0.0011124015727546066,
+   "secs": 22.38035798072815
+  },
+  {
+   "epoch": 7,
+   "train_loss": 1679.4284684244792,
+   "val_loss": 9983.70654296875,
+   "val_ade_300s": 1003.1960906982422,
+   "val_mag": 0.001052146079018712,
+   "secs": 24.21580147743225
+  },
+  {
+   "epoch": 8,
+   "train_loss": 1602.7922066243489,
+   "val_loss": 9647.240478515625,
+   "val_ade_300s": 969.5506591796875,
+   "val_mag": 0.0009432412189198658,
+   "secs": 23.19549798965454
+  },
+  {
+   "epoch": 9,
+   "train_loss": 1608.2835030110678,
+   "val_loss": 9839.796630859375,
+   "val_ade_300s": 988.8045043945312,
+   "val_mag": 0.0009533928532619029,
+   "secs": 14.968858480453491
+  },
+  {
+   "epoch": 10,
+   "train_loss": 1759.3728299967447,
+   "val_loss": 9746.5888671875,
+   "val_ade_300s": 979.4820404052734,
+   "val_mag": 0.000949358000070788,
+   "secs": 12.319283485412598
+  },
+  {
+   "epoch": 11,
+   "train_loss": 1690.7434586588543,
+   "val_loss": 9625.977783203125,
+   "val_ade_300s": 967.4176635742188,
+   "val_mag": 0.0009577973250998184,
+   "secs": 19.647480249404907
+  },
+  {
+   "epoch": 12,
+   "train_loss": 6038.676126708984,
+   "val_loss": 9551.165771484375,
+   "val_ade_300s": 959.9414825439453,
+   "val_mag": 0.0009068030485650524,
+   "secs": 30.363608837127686
+  },
+  {
+   "epoch": 13,
+   "train_loss": 4947.9130346679685,
+   "val_loss": 9573.899169921875,
+   "val_ade_300s": 962.2146453857422,
+   "val_mag": 0.0009002165024867281,
+   "secs": 25.600384950637817
+  },
+  {
+   "epoch": 14,
+   "train_loss": 5841.342266438802,
+   "val_loss": 9528.348876953125,
+   "val_ade_300s": 957.6579742431641,
+   "val_mag": 0.0008995686075650156,
+   "secs": 19.52800679206848
+  }
+ ],
+ "best_val_loss": 9528.348876953125,
+ "n_train_drives": 420,
+ "n_val_drives": 135,
+ "epochs": 15,
+ "steps_per_epoch": 150,
+ "device": "cuda"
+}

@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="nice -n 10 ionice -c2 -n7 ${PYTHON:-python3} -B"
-export PYTHONPATH=$OPENPILOT_DIR
+export PYTHONPATH="$(cd "$(dirname "$0")/.." && pwd)/src${PYTHONPATH:+:$PYTHONPATH}"
 M=manifests/episode_manifest_v1.parquet
 LOG=${CANTRAJ_LOGS:-logs}/can2gps_learned.log
 MODELS=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn

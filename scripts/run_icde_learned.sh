@@ -4,7 +4,7 @@
 # motion-source timing on all main-fold w05 episodes. Do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 W=${WORKERS:-3}
 M=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn
 COMMON="--run icde_v11 --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --folds test few_shot_heldout --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --resume --flush-min 15"

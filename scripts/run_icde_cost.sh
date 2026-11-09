@@ -6,7 +6,7 @@
 # Run when the machine is otherwise quiet; do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 LOG=${CANTRAJ_LOGS:-${CANTRAJ_LOGS:-logs}}/icde_cost
 mkdir -p "$LOG"
 M=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn

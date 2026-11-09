@@ -18,11 +18,11 @@ Everything bulky lives outside the repository and is located through environment
 
 | variable | content | source |
 |---|---|---|
-| `CANTRAJ_GPS` | GPS reference: `<driver>/<drive>.csv` (time_s, positions, accuracies) and `manifest.csv` | gated Hugging Face dataset `HenryYHW/DriveDNA-GPS` |
+| `CANTRAJ_GPS` | GPS reference: `<driver>/<drive>.csv` (time_s, positions, accuracies) and `manifest.csv` | gated Hugging Face dataset `HenryYHW/CANTraj` (formerly `HenryYHW/DriveDNA-GPS`) |
 | `CANTRAJ_DRIVEDNA` | DriveDNA release root with `raw_signals/<driver>/<drive>.parquet` (10 Hz grid) and `index/drives.parquet` | Hugging Face dataset `HenryYHW/DriveDNA` |
 | `CANTRAJ_EXTRA` | optional second root with the same layout (the Controlled supplement) | `HenryYHW/DriveDNA-Controlled` |
-| `CANTRAJ_BENCH` | working cache: `native/<driver>/<drive>/*.parquet` (CAN / IMU event tables), `maps/tiles/`, `preds/`, `scores/`, `models/` | native tables from `DriveDNA-GPS/events/`; maps from Geofabrik; the rest is produced by the scripts |
-| `CANTRAJ_MANIFESTS` | benchmark manifests (default `./manifests`) | `DriveDNA-GPS/benchmark/` |
+| `CANTRAJ_BENCH` | working cache: `native/<driver>/<drive>/*.parquet` (CAN / IMU event tables), `maps/tiles/`, `preds/`, `scores/`, `models/` | native tables from `CANTraj/events/`; maps from Geofabrik; the rest is produced by the scripts |
+| `CANTRAJ_MANIFESTS` | benchmark manifests (default `./manifests`) | `CANTraj/benchmark/` |
 | `CANTRAJ_LOGS` | log directory (default `./logs`) | |
 
 Only `time_s` and the positions of the GPS files are read; the benchmark never reads device or route identifiers.

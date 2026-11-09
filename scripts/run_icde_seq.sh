@@ -10,7 +10,7 @@ set -u
 cd "$(dirname "$0")/.."
 WAIT_PID=${1:-0}
 while [ "$WAIT_PID" -gt 0 ] && kill -0 "$WAIT_PID" 2>/dev/null; do sleep 30; done
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 GATE_MB=${GATE_MB:-12000}
 M=${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/models/learn
 BASE="--version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --resume --flush-min 15"

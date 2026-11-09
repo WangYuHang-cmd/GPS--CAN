@@ -8,7 +8,7 @@
 # Logs: $CANTRAJ_LOGS/icde_agent_<step>.log. One heavy local job at a time; the LLM runs on the remote H100.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 RUN=${RUN:-icde_agent}
 COHORT=${COHORT:-manifests/icde_agent_cohort.csv}
 WORKERS=${WORKERS:-3}

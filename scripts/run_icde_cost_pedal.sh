@@ -8,7 +8,7 @@
 # Run when the machine is otherwise quiet; do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 LOG=${CANTRAJ_LOGS:-${CANTRAJ_LOGS:-logs}}/icde_cost_pedal
 mkdir -p "$LOG"
 EPIS=manifests/icde_cost_episodes_pedal.csv

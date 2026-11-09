@@ -5,7 +5,7 @@
 # a failure and counted. Waits for >= GATE_MB available before each step; scores at the end. Do not edit while it runs.
 set -u
 cd "$(dirname "$0")/.."
-PY=${PYTHON:-${PYTHON:-python3}3}
+PY=${PYTHON:-python3}
 GATE_MB=${GATE_MB:-12000}
 COMMON="--run icde_v11 --folds test few_shot_heldout --version v1.1 --manifest manifests/episode_manifest_v1.parquet --eligible-only --tiles-dir ${CANTRAJ_BENCH:-/data/backup/DriveDNA-GPS_bench}/maps/tiles_v2 --map-episodes manifests/episode_map_v11.parquet --resume --flush-min 15 --wins full"
 gate() {
